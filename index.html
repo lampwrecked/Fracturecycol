@@ -33,7 +33,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
    Settings, added to the end of the address (join with &):
      ?layers=12  looping layers kept (1-24)
      ?hands=8    fingers that can hold at once
-     ?idle=75    seconds with no touch before the piece dissolves back to black
+     ?idle=0     seconds with no touch before the piece dissolves back to black (0 = never: it keeps looping and growing)
      ?ghost=20   seconds between silent ghost cracks while resting (0 = off)
      ?trails=4   how long light lingers before fading to black (1 = like the live piece on a fast phone, 8 = twice as long as 4)
      ?res=1920   canvas detail on the long edge (steps down by itself if too slow, and remembers)
@@ -50,7 +50,7 @@ const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
 let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,3)),aEl=null,devErr=0;
 let TRAILS=qn('trails',LS('trails',4),.5,40);
-const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600);
+const HANDS=qn('hands',8,1,40),IDLE=qn('idle',0,0,360000),GHOST=qn('ghost',20,0,3600);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
 const cv=$('c'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
@@ -1114,7 +1114,7 @@ function idleTick(now){
   const idle=now-lastTouch;
   if(events.length){
     /* nobody has touched for a while: layers leave a few at a time, once per loop, until the wall is quiet */
-    if(idle>IDLE&&now-lastDrop>=LOOP){lastDrop=now;events.splice(0,Math.max(1,Math.ceil(events.length/4)));}
+    if(IDLE>0&&idle>IDLE&&now-lastDrop>=LOOP){lastDrop=now;events.splice(0,Math.max(1,Math.ceil(events.length/4)));}
     return;
   }
   if(!resting){if(now-lastActive>(METER&&lumAvg<1.2?4:20+TRAILS*8))rest(now);return;}     /* rest once the picture has faded to black */
@@ -1248,7 +1248,7 @@ function frame(){
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      dbg.textContent='B7  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+      dbg.textContent='B8  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  trails '+TRAILS+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
         +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element','OFF'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
