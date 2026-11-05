@@ -98,24 +98,30 @@ let rzT;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(resize,1
 /* ===== fracture geometry: linear, branching cracks that cross and break through each other ===== */
 const world=[];let crackId=1,uidN=0,wgrid=new Map();
 const GC=64,gridKey=(cx,cy)=>(cx+16)*256+(cy+16);
-function rebuildGrid(){
-  wgrid=new Map();
-  for(let i=0;i<world.length;i++){
-    const s=world[i],x0=Math.floor(Math.min(s[0],s[2])/GC),x1=Math.floor(Math.max(s[0],s[2])/GC),y0=Math.floor(Math.min(s[1],s[3])/GC),y1=Math.floor(Math.max(s[1],s[3])/GC);
-    for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){const k=gridKey(cx,cy);let a=wgrid.get(k);if(!a){a=[];wgrid.set(k,a);}a.push(s);}
-  }
+function gridAdd(grid,s){
+  const x0=Math.floor(Math.min(s[0],s[2])/GC),x1=Math.floor(Math.max(s[0],s[2])/GC),y0=Math.floor(Math.min(s[1],s[3])/GC),y1=Math.floor(Math.max(s[1],s[3])/GC);
+  for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){const k=gridKey(cx,cy);let a=grid.get(k);if(!a){a=[];grid.set(k,a);}a.push(s);}
 }
+function rebuildGrid(){wgrid=new Map();for(let i=0;i<world.length;i++)gridAdd(wgrid,world[i]);}
 function clearWorld(){world.length=0;wgrid=new Map();}
-/* a layer's cracks live in the world while it is on canvas; a replay swaps its old cracks for its newly grown ones */
+/* a layer's cracks live in the world while it is on canvas; a replay swaps its old cracks for its newly grown ones.
+   BOARD: new cracks are just added (each layer carries a version number, so its older cracks are ignored), and the
+   list is tidied up between touches instead of being rebuilt from scratch every single time a crack is grown. */
+const ownerVer=new Map();let worldSweep=0;
 function touchWorld(geo,owner){
-  const now=performance.now()/1000;
-  let keep=world.filter(s=>s[6]!==owner&&now-s[5]<=14);
-  for(const q of geo.own)keep.push([q[0],q[1],q[2],q[3],q[4],now,owner]);
+  const now=performance.now()/1000,ver=(ownerVer.get(owner)||0)+1;ownerVer.set(owner,ver);
+  for(const q of geo.own){const s=[q[0],q[1],q[2],q[3],q[4],now,owner,ver];world.push(s);gridAdd(wgrid,s);}
+  if(world.length>16000)sweepWorld(now);
+}
+function sweepWorld(now){
+  worldSweep=now;
+  let keep=world.filter(s=>s[7]===ownerVer.get(s[6])&&now-s[5]<=14);
   if(keep.length>12000)keep=keep.slice(keep.length-12000);
-  world.length=0;for(let i=0;i<keep.length;i++)world.push(keep[i]);
+  world.length=0;const live=new Set();for(let i=0;i<keep.length;i++){world.push(keep[i]);live.add(keep[i][6]);}
+  ownerVer.forEach((v,k)=>{if(!live.has(k))ownerVer.delete(k);});
   rebuildGrid();
 }
-function findHit(x1,y1,x2,y2,id,own,owner){
+function findHit(x1,y1,x2,y2,id,ogrid,owner,now){
   let bt=2,bx=0,by=0,ba=0;
   const minx=Math.min(x1,x2),maxx=Math.max(x1,x2),miny=Math.min(y1,y2),maxy=Math.max(y1,y2),dx=x2-x1,dy=y2-y1;
   const test=s=>{
@@ -126,41 +132,45 @@ function findHit(x1,y1,x2,y2,id,own,owner){
     const t=((x3-x1)*ey-(y3-y1)*ex)/d,u=((x3-x1)*dy-(y3-y1)*dx)/d;
     if(t>.03&&t<=1&&u>=0&&u<=1&&t<bt){bt=t;bx=x1+dx*t;by=y1+dy*t;ba=Math.atan2(ey,ex);}
   };
-  for(let i=0;i<own.length;i++){const s=own[i];if(s[4]!==id)test(s);}
+  /* both this fracture's own cracks and everyone else's are looked up by neighbourhood, never by scanning the whole list */
   const cx0=Math.floor(minx/GC),cx1=Math.floor(maxx/GC),cy0=Math.floor(miny/GC),cy1=Math.floor(maxy/GC);
   for(let cx=cx0;cx<=cx1;cx++)for(let cy=cy0;cy<=cy1;cy++){
-    const a=wgrid.get(gridKey(cx,cy));
-    if(a)for(let i=0;i<a.length;i++){const s=a[i];if(s[6]!==owner)test(s);}
+    const k=gridKey(cx,cy),o=ogrid.get(k),a=wgrid.get(k);
+    if(o)for(let i=0;i<o.length;i++){const s=o[i];if(s[4]!==id)test(s);}
+    if(a)for(let i=0;i<a.length;i++){const s=a[i];if(s[6]!==owner&&s[7]===ownerVer.get(s[6])&&now-s[5]<=14)test(s);}
   }
   return bt<=1?{x:bx,y:by,ang:ba,d:bt*Math.hypot(dx,dy)}:null;
 }
-function build(ox,oy,seed,maxR,owner,gen){
-  const gf=1+Math.min(gen||0,8)*.1;
-  const rng=mulberry32(seed),segs=[],cells=[],nodes=[],own=[],hyp=Math.hypot(simW,simH),MAXSEG=800;
-  const add=(x1,y1,x2,y2,pl,w,h,id)=>{segs.push([x1,y1,x2,y2,pl,w,h]);own.push([x1,y1,x2,y2,id,w,pl]);};
-  function slab(trail,pl,h){
+/* limit: when set, only the first stretch of every arm is grown (cheap enough to do inside a touch event).
+   every arm and branch has its own random stream, so that first stretch is the same one the full build grows. */
+function build(ox,oy,seed,maxR,owner,gen,limit){
+  const gf=1+Math.min(gen||0,8)*.1,now=performance.now()/1000,LIM=limit||Infinity;
+  const rng=mulberry32(seed),segs=[],cells=[],nodes=[],own=[],ogrid=new Map(),hyp=Math.hypot(simW,simH),MAXSEG=800;
+  const child=r=>mulberry32((r()*4294967296)>>>0);
+  const add=(x1,y1,x2,y2,pl,w,h,id)=>{segs.push([x1,y1,x2,y2,pl,w,h]);const o=[x1,y1,x2,y2,id,w,pl];own.push(o);gridAdd(ogrid,o);};
+  function slab(trail,pl,h,rng){
     const a=trail[0],b=trail[trail.length-1],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1,s=rng()<.5?-1:1,wd=(8+rng()*52)*K,nx=-dy/L*s*wd,ny=dx/L*s*wd;
     const pts=trail.map(p=>[p[0],p[1]]);
     for(let i=trail.length-1;i>=0;i--)pts.push([trail[i][0]+nx,trail[i][1]+ny]);
     let cx=0,cy=0;pts.forEach(p=>{cx+=p[0];cy+=p[1];});
     cells.push({pts,d:pl,cx:cx/pts.length,cy:cy/pts.length,ang:Math.atan2(dy,dx),lit:rng()<.5,al:.08+rng()*.2,h:(rng()-.5)*120});
   }
-  function branch(x,y,a,rem,w,h,depth,pl,fork){
+  function branch(x,y,a,rem,w,h,depth,pl,fork,r){
     nodes.push({x,y,pl,hd:a,ang:a,t:0});
-    const da=(rng()<.5?-1:1)*(.25+rng()*.95);
-    walk(x,y,a+da,Math.max(hyp*.05,rem*(.25+rng()*.4)),w*.72,h+(rng()-.5)*40,depth+1,pl,0,fork);
+    const da=(r()<.5?-1:1)*(.25+r()*.95),ln=Math.max(hyp*.05,rem*(.25+r()*.4)),h2=h+(r()-.5)*40;
+    walk(x,y,a+da,ln,w*.72,h2,depth+1,pl,0,fork,child(r));
   }
-  function walk(x,y,a,len,w,h,depth,pl0,straight,fork){
+  function walk(x,y,a,len,w,h,depth,pl0,straight,fork,rng){
     const id=crackId++;
     let pl=pl0,run=0,cd=depth?2:0;
     const jit=straight?.012:.1,kink=straight?.01:.06,trail=[[x,y]];
-    while(run<len&&segs.length<MAXSEG){
+    while(run<len&&segs.length<MAXSEG&&pl<=LIM){
       const st=(14+rng()*26)*K;
       a+=(rng()-.5)*jit;
       if(rng()<kink)a+=(rng()<.5?-1:1)*(.25+rng()*.45);
       const nx=x+Math.cos(a)*st,ny=y+Math.sin(a)*st,ww=Math.max(.6,w*(1-.5*run/len));
       let hit=null;
-      if(cd>0)cd--;else hit=findHit(x,y,nx,ny,id,own,owner);
+      if(cd>0)cd--;else hit=findHit(x,y,nx,ny,id,ogrid,owner,now);
       if(hit){
         add(x,y,hit.x,hit.y,pl,ww,h,id);pl+=hit.d;run+=hit.d;
         nodes.push({x:hit.x,y:hit.y,pl,hd:a,ang:hit.ang,t:1});
@@ -168,40 +178,40 @@ function build(ox,oy,seed,maxR,owner,gen){
         const off=(rng()-.5)*(14+rng()*40)*K,jx=hit.x+Math.cos(hit.ang)*off,jy=hit.y+Math.sin(hit.ang)*off;
         add(hit.x,hit.y,jx,jy,pl,ww,h,id);pl+=Math.abs(off);
         x=jx;y=jy;a+=(rng()-.5)*.6;cd=2;trail.length=0;trail.push([x,y]);
-        if(depth<3&&rng()<Math.min(.9,.5*gf))branch(x,y,a,len-run,w,h,depth,pl,fork);
+        if(depth<3&&rng()<Math.min(.9,.5*gf))branch(x,y,a,len-run,w,h,depth,pl,fork,rng);
         continue;
       }
       add(x,y,nx,ny,pl,ww,h,id);pl+=st;run+=st;x=nx;y=ny;
       trail.push([x,y]);if(trail.length>4)trail.shift();
-      if(trail.length>=3&&rng()<.09)slab(trail,pl,h);
-      if(depth<3&&rng()<(depth?.07:.09)*fork*gf)branch(x,y,a,len-run,w,h,depth,pl,fork);
+      if(trail.length>=3&&rng()<.09)slab(trail,pl,h,rng);
+      if(depth<3&&rng()<(depth?.07:.09)*fork*gf)branch(x,y,a,len-run,w,h,depth,pl,fork,rng);
       if(x<-80||y<-80||x>simW+80||y>simH+80)break;
     }
   }
   const a0=rng()*TAU,mode=rng(),Lg=()=>hyp*(.4+.55*rng()),hh=()=>(rng()-.5)*90;
   nodes.push({x:ox,y:oy,pl:0,hd:a0,ang:a0,t:0});
   if(mode<.26){            // one straight line through the point
-    walk(ox,oy,a0,Lg(),1.9,hh(),0,0,1,1.3);
-    walk(ox,oy,a0+Math.PI+(rng()-.5)*.1,Lg(),1.9,hh(),0,0,1,1.3);
+    walk(ox,oy,a0,Lg(),1.9,hh(),0,0,1,1.3,child(rng));
+    walk(ox,oy,a0+Math.PI+(rng()-.5)*.1,Lg(),1.9,hh(),0,0,1,1.3,child(rng));
   }else if(mode<.52){      // lopsided tree: arms in a random cone, any direction
     const n=3+((rng()*3)|0),cone=.6+rng()*2.6;
-    for(let i=0;i<n;i++)walk(ox,oy,a0+(i/(n-1)-.5)*cone+(rng()-.5)*.2,Lg(),1.8,hh(),0,0,0,1);
+    for(let i=0;i<n;i++)walk(ox,oy,a0+(i/(n-1)-.5)*cone+(rng()-.5)*.2,Lg(),1.8,hh(),0,0,0,1,child(rng));
   }else if(mode<.8){       // crossing lines: one through the point, others cut across it
     const L1=Lg();
-    walk(ox,oy,a0,L1,1.9,hh(),0,0,1,.8);
-    walk(ox,oy,a0+Math.PI,Lg(),1.9,hh(),0,0,1,.8);
+    walk(ox,oy,a0,L1,1.9,hh(),0,0,1,.8,child(rng));
+    walk(ox,oy,a0+Math.PI,Lg(),1.9,hh(),0,0,1,.8,child(rng));
     const n=2+((rng()*3)|0);
     for(let i=0;i<n;i++){
       const s=(rng()-.5)*1.2*L1,off=(rng()<.5?-1:1)*(.05+rng()*.2)*hyp*.5;
       const sx=ox+Math.cos(a0)*s-Math.sin(a0)*off,sy=oy+Math.sin(a0)*s+Math.cos(a0)*off;
       const phi=-Math.sign(off)*(.4+rng()*2.3);
-      walk(sx,sy,a0+phi,Lg(),1.6,hh(),0,Math.hypot(sx-ox,sy-oy),1,.8);
+      walk(sx,sy,a0+phi,Lg(),1.6,hh(),0,Math.hypot(sx-ox,sy-oy),1,.8,child(rng));
     }
   }else{                   // lightning: one-sided trunk, heavy forking
-    walk(ox,oy,a0,hyp*(.6+.4*rng()),1.9,hh(),0,0,0,2.3);
-    walk(ox,oy,a0+Math.PI+(rng()-.5)*.6,hyp*(.1+.2*rng()),1.5,hh(),0,0,0,1.5);
+    walk(ox,oy,a0,hyp*(.6+.4*rng()),1.9,hh(),0,0,0,2.3,child(rng));
+    walk(ox,oy,a0+Math.PI+(rng()-.5)*.6,hyp*(.1+.2*rng()),1.5,hh(),0,0,0,1.5,child(rng));
   }
-  touchWorld({own},owner);
+  if(!limit)touchWorld({own},owner);
   segs.sort((a,b)=>a[4]-b[4]);cells.sort((a,b)=>a.d-b.d);nodes.sort((a,b)=>a.pl-b.pl);
   {const cr=nodes.filter(n=>n.t),keep=Math.min(cr.length,36);
    for(let i=0;i<keep;i++){const n=cr[Math.floor(i*cr.length/keep)];n.fx={s:rng()<.5?-1:1,Wc:(60+rng()*160)*K,Ls:(40+rng()*110)*K,sh:(rng()<.5?-1:1)*(8+rng()*34)*K,R:(20+rng()*40)*K};}}
@@ -230,7 +240,7 @@ function crossFX(f,n){
   [n.ang,n.hd].forEach(an=>{g.beginPath();g.moveTo(n.x-Math.cos(an)*R*1.8,n.y-Math.sin(an)*R*1.8);g.lineTo(n.x+Math.cos(an)*R*1.8,n.y+Math.sin(an)*R*1.8);g.stroke();});
   g.globalCompositeOperation='source-over';
 }
-function reveal(f,upto){
+function reveal(f,upto,linesOnly){
   g.globalCompositeOperation='lighter';g.lineCap='round';
   const S=f.geo.segs;
   while(f.si<S.length&&S[f.si][4]<=upto){
@@ -249,7 +259,7 @@ function reveal(f,upto){
   }
   g.globalCompositeOperation='source-over';
   const N=f.geo.nodes;
-  while(f.ni<N.length&&N[f.ni].pl<=upto){const n=N[f.ni++];if(n.fx)crossFX(f,n);}
+  while(f.ni<N.length&&N[f.ni].pl<=upto){const n=N[f.ni++];if(n.fx&&!linesOnly)crossFX(f,n);}
 }
 /* glitches run at points along the cracks, not around the press point */
 function sub(f){
@@ -882,13 +892,24 @@ class Fr{
   constructor(o){
     Object.assign(this,o);
     this.maxR=MAXR();
-    this.geo=o.geo||build(this.x,this.y,this.seed,this.maxR,this.uid,0);this.rings=this.geo.rings;
+    /* a touch only grows the first stretch of its cracks (fast); finish() grows the rest a moment later */
+    this.partial=!!this.live&&!o.geo;
+    this.geo=o.geo||build(this.x,this.y,this.seed,this.maxR,this.uid,0,this.partial?rad(0,this.maxR):0);this.rings=this.geo.rings;
     this.ops=o.ops||[];this.oi=0;this.ts=(o.hold&&o.dur)?o.hold/o.dur:1;
     this.t0=performance.now()/1000;this.si=0;this.ci=0;this.ni=0;this.ri=0;this.p=0;this.lastTick=0;this.lastUpd=0;this.bc=0;this.done=false;this.released=false;
     if(this.live){
       this.pool=PRIMARY[this.inst].slice();
     }
     flash(this,40*K,.5);
+  }
+  finish(){
+    if(!this.partial)return;this.partial=false;
+    const lim=rad(0,this.maxR),geo=build(this.x,this.y,this.seed,this.maxR,this.uid,0),r=rad(this.p||0,this.maxR)/this.maxR;
+    let i=0;while(i<geo.segs.length&&geo.segs[i][4]<=lim)i++;this.si=i;      /* that first stretch is already on screen */
+    i=0;while(i<geo.cells.length&&geo.cells[i].d<=lim)i++;this.ci=i;
+    i=0;while(i<geo.nodes.length&&geo.nodes[i].pl<=lim)i++;this.ni=i;
+    i=0;while(i<geo.rings.length&&geo.rings[i]<=r)i++;this.ri=i;
+    this.geo=geo;this.rings=geo.rings;
   }
   put(op){op.s=(Math.random()*1e9)|0;this.ops.push(op);runOp(this,op);}
   op(t,k,n,r,q){const c=sub(this);this.put({t,k,n,x:c.x,y:c.y,u:c.u,r,q});}
@@ -925,6 +946,7 @@ class Fr{
   }
   release(){
     if(this.released)return;
+    this.finish();
     this.released=true;this.done=true;
     const th=performance.now()/1000-this.t0,p=growth(th);
     this.p=p;burst(this,p,th);
@@ -984,7 +1006,7 @@ function fadePass(){
 }
 
 /* ===== input: the picture comes first ===== */
-let pressMs=0;
+let pressMs=0,buildMs=0;
 function begin(e){
   if(held.size>=HANDS)return;             /* a crowd (or a sleeve on the touch frame) can't pile up endless voices */
   const t0=performance.now();
@@ -999,8 +1021,10 @@ function begin(e){
   const inst=pickInst(),f=pitchFrom(y/simH);
   const fr=new Fr({uid:++uidN,x,y,seed:(rnd()*1e9)|0,hue:famHue(inst),sat:famSat(inst),inst,live:true,f,voice:null,pressT:t});
   held.set(e.pointerId,fr);frs.push(fr);
-  try{reveal(fr,rad(0,fr.maxR));}catch(err){console.warn(err);}   /* draw the first stretch of crack right now, inside the touch event; effects follow on the next frame */
+  try{reveal(fr,rad(0,fr.maxR),true);}catch(err){console.warn(err);}   /* draw the first stretch of crack right now, inside the touch event; effects follow on the next frame */
   pressMs=Math.max(pressMs*.9,performance.now()-t0);
+  /* the rest of the crack web is grown only after that first stretch has reached the screen */
+  requestAnimationFrame(()=>setTimeout(()=>{const b0=performance.now();try{fr.finish();}catch(err){console.warn(err);}buildMs=Math.max(buildMs*.9,performance.now()-b0);},0));
   /* the sound is built straight after, in its own turn, so it can never delay the line */
   setTimeout(()=>{
     try{
@@ -1079,12 +1103,12 @@ addEventListener('keydown',e=>{
 });
 
 /* ===== main loop ===== */
-/* if the page stays under ~24 frames a second for 1.5 s, the canvas drops a step in detail (1920 -> 1600 -> 1280 -> 960 -> 640), remembered.
+/* if the page stays under ~19 frames a second for 1.5 s, the canvas drops a step in detail (1920 -> 1600 -> 1280 -> 960 -> 640), remembered.
    once RES is set by hand in the tuning panel, it stays where it was put. */
 let slowSince=0;
 function setRes(v){simLong=v;K=simLong/1600;try{localStorage.setItem(RES_KEY,simLong);}catch(_){}clearWorld();frs=frs.filter(f=>f.live);resize();}
 function qualityCheck(now){
-  if(manualRes||fms<42||simLong<=640){slowSince=0;return;}
+  if(manualRes||fms<52||simLong<=640){slowSince=0;return;}
   if(!slowSince){slowSince=now;return;}
   if(now-slowSince<1.5)return;
   slowSince=0;setRes(simLong>1600?1600:simLong>1280?1280:simLong>960?960:640);
@@ -1120,11 +1144,12 @@ function frame(){
   sched();
   const dt=lastFrameT?now-lastFrameT:0;
   if(lastFrameT){fms=fms*.9+dt*1000*.1;worst=Math.max(worst*.985,dt*1000);}lastFrameT=now;
-  budget=fms>48?1:fms>32?2:3;
-  rbudget=fms>50?2:fms>34?4:fms>24?7:10;
+  budget=fms>62?1:fms>45?2:3;                     /* thresholds sit below 30 fps: this board's browser tops out there */
+  rbudget=fms>66?2:fms>50?4:fms>40?7:10;
   if(FX<2){budget=FX?Math.min(budget,1):0;rbudget=FX?Math.min(rbudget,3):0;}
   qualityCheck(now);
   idleTick(now);
+  if(now-worldSweep>5&&!held.size&&world.length){sweepWorld(now);}
   if(AC){
     const ac=AC.currentTime;
     while(mvq.length&&mvq[0].t<=ac)mvq.shift();
@@ -1144,7 +1169,7 @@ function frame(){
       let lvl=0;
       if(AC&&master){try{if(!an||an.context!==AC){an=AC.createAnalyser();an.fftSize=512;anBuf=new Float32Array(512);master.connect(an);}an.getFloatTimeDomainData(anBuf);for(let i=0;i<512;i++){const v=Math.abs(anBuf[i]);if(v>lvl)lvl=v;}}catch(_){}}
       outPk=Math.max(outPk*.9,lvl);
-      dbg.textContent='B2  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms'
+      dbg.textContent='B3  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
         +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
