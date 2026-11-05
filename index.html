@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#000000">
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+#c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;image-rendering:auto;touch-action:none;cursor:crosshair}
 #hint{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:max(14px,2vmin);pointer-events:none;color:#fff;font:max(12px,1.5vmin)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.35em;text-transform:uppercase;transition:opacity 1.2s;mix-blend-mode:difference}
 #hint b{font-size:max(22px,3.4vmin);font-weight:400;letter-spacing:.7em;margin-right:-.7em}
 #hint span{opacity:.6}
@@ -134,7 +134,8 @@ body.rest #hint span{animation:breathe 3.6s ease-in-out infinite}
 (()=>{
 'use strict';
 /* ===== constants ===== */
-const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS, MAXV=24;
+const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS,
+  MAXV=Math.min(24,Math.max(1,parseInt(new URLSearchParams(location.search).get('layers'),10)||12));   /* WALL: 12 looping layers by default (the live piece uses 24); ?layers=24 to raise */
 const $=id=>document.getElementById(id);
 const cv=$('c');
 const g=cv.getContext('2d',{willReadFrequently:true,alpha:false});
@@ -145,12 +146,13 @@ const g=cv.getContext('2d',{willReadFrequently:true,alpha:false});
    ghost=20  seconds between the silent "ghost" cracks shown while nobody is touching (0 = off)
    res=1920  canvas detail on the long edge (drops by itself if the screen's computer is too slow, and remembers)
    fs=0      don't go fullscreen on the first touch
-   hands=12  how many fingers can hold a fracture at the same time */
+   hands=8   how many fingers can hold a fracture at the same time
+   layers=12 how many looping layers the piece keeps (1-24); fewer = lighter on the screen's computer */
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
 const KIOSK=QP.get('kiosk')!=='0',FS=QP.get('fs')!=='0';
-const IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),HANDS=qn('hands',12,1,40);
-const RES_KEY='fracture-wall-res';
+const IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),HANDS=qn('hands',8,1,40);
+const RES_KEY='fracture-wall-res2';
 let simLong=(()=>{
   if(QP.has('res')){try{localStorage.removeItem(RES_KEY);}catch(_){}return Math.round(qn('res',1920,600,3840));}
   let s=0;try{s=+localStorage.getItem(RES_KEY)||0;}catch(_){}
@@ -182,7 +184,10 @@ g.fillStyle='#000';g.fillRect(0,0,simW,simH);g.imageSmoothingEnabled=false;
 /* every effect that moves pixels around reads from this frame-start snapshot. drawing a canvas onto ITSELF makes the
    browser copy the entire canvas on every single call (dozens per frame = the lag), a separate source canvas does not. */
 const SNc=document.createElement('canvas'),sn=SNc.getContext('2d',{alpha:false});
-function syncSnap(){if(SNc.width!==simW||SNc.height!==simH){SNc.width=simW;SNc.height=simH;}sn.drawImage(cv,0,0);}
+function syncSnap(){if(SNc.width!==simW||SNc.height!==simH){SNc.width=simW;SNc.height=simH;}sn.drawImage(cv,0,0);snapDirty=false;}
+let snapDirty=true;
+/* WALL: the snapshot is only taken on frames where an effect actually reads it (it is a full-canvas copy) */
+function SN(){if(snapDirty)syncSnap();return SNc;}
 syncSnap();
 function resize(){
   const old=document.createElement('canvas');old.width=cv.width;old.height=cv.height;
@@ -319,7 +324,7 @@ function crossFX(f,n){
   const bw=x1-x0,bh=y1-y0;
   if(bw>2&&bh>2){
     g.save();g.beginPath();P.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.clip();
-    g.drawImage(SNc,x0,y0,bw,bh,x0+u[0]*sh,y0+u[1]*sh,bw,bh);g.restore();
+    g.drawImage(SN(),x0,y0,bw,bh,x0+u[0]*sh,y0+u[1]*sh,bw,bh);g.restore();
   }
   g.globalCompositeOperation='lighter';
   const R=q.R,gr=g.createRadialGradient(n.x,n.y,0,n.x,n.y,R);
@@ -381,10 +386,10 @@ GL.slice=(f,r,k)=>{
     g.globalCompositeOperation=rnd()<.3?'lighter':'source-over';
     if(hz){
       const y=clamp(Math.round(f.y+(rnd()-.5)*2*r),0,simH-th),x0=clamp(Math.round(f.x-r),0,simW-2),w=Math.max(2,Math.min(simW-x0,Math.round(r*2)));
-      g.drawImage(SNc,x0,y,w,th,x0+off,y,w,th);
+      g.drawImage(SN(),x0,y,w,th,x0+off,y,w,th);
     }else{
       const x=clamp(Math.round(f.x+(rnd()-.5)*2*r),0,simW-th),y0=clamp(Math.round(f.y-r),0,simH-2),h=Math.max(2,Math.min(simH-y0,Math.round(r*2)));
-      g.drawImage(SNc,x,y0,th,h,x,y0+off,th,h);
+      g.drawImage(SN(),x,y0,th,h,x,y0+off,th,h);
     }
   }
 };
@@ -394,10 +399,10 @@ GL.smear=(f,r,k)=>{
     const len=Math.round((30+rnd()*(100+300*k))*K)*(rnd()<.5?-1:1),a=Math.abs(len);
     if(rnd()<.5){
       const x=clamp(Math.round(f.x+(rnd()-.5)*2*r),0,simW-1),y0=clamp(Math.round(f.y-r*(.2+rnd()*.8)),0,simH-2),h=Math.max(2,Math.min(simH-y0,Math.round(r*(.2+rnd()*.8))));
-      g.drawImage(SNc,x,y0,1,h,len<0?x+len:x,y0,a,h);
+      g.drawImage(SN(),x,y0,1,h,len<0?x+len:x,y0,a,h);
     }else{
       const y=clamp(Math.round(f.y+(rnd()-.5)*2*r),0,simH-1),x0=clamp(Math.round(f.x-r*(.2+rnd()*.8)),0,simW-2),w=Math.max(2,Math.min(simW-x0,Math.round(r*(.2+rnd()*.8))));
-      g.drawImage(SNc,x0,y,w,1,x0,len<0?y+len:y,w,a);
+      g.drawImage(SN(),x0,y,w,1,x0,len<0?y+len:y,w,a);
     }
   }
 };
@@ -408,7 +413,7 @@ GL.blocks=(f,r,k)=>{
     const sx=clamp(Math.round(f.x+(rnd()-.5)*2*r-bw/2),0,simW-bw),sy=clamp(Math.round(f.y+(rnd()-.5)*2*r-bh/2),0,simH-bh);
     const dx=sx+Math.round((rnd()-.5)*(60+240*k)*K),dy=sy+Math.round((rnd()-.5)*(30+120*k)*K);
     g.globalCompositeOperation=ops[(rnd()*4)|0];
-    g.drawImage(SNc,sx,sy,bw,bh,dx,dy,bw,bh);
+    g.drawImage(SN(),sx,sy,bw,bh,dx,dy,bw,bh);
     if(rnd()<.35){g.globalCompositeOperation='lighter';g.fillStyle='hsla('+((rnd()*360)|0)+',100%,55%,.35)';g.fillRect(dx,dy,bw,bh);}
   }
 };
@@ -417,7 +422,7 @@ GL.tear=(f,r,k)=>{
   for(let i=0;i<n;i++){
     const th=1+((rnd()*3)|0),y=clamp(Math.round(f.y-r*.8+rnd()*r*1.6),0,simH-4),off=Math.round((rnd()-.5)*(10+90*k)*K);
     g.globalCompositeOperation='source-over';
-    g.drawImage(SNc,x0,y,w,th,x0+off,y,w,th);
+    g.drawImage(SN(),x0,y,w,th,x0+off,y,w,th);
     if(rnd()<.15){g.globalCompositeOperation='lighter';g.fillStyle='hsla('+((rnd()*360)|0)+',100%,60%,.5)';g.fillRect(x0+off,y,w,th);}
   }
 };
@@ -433,7 +438,7 @@ GL.invert=(f,r,k)=>{
 GL.echo=(f,r,k)=>{
   g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.08+.18*k;
   g.translate(f.x,f.y);g.rotate((rnd()-.5)*.05*k);const s=1.015+.05*k;g.scale(s,s);g.translate(-f.x,-f.y);
-  g.drawImage(SNc,0,0);g.restore();
+  g.drawImage(SN(),0,0);g.restore();
 };
 GL.rgb=(f,r,k)=>{
   const R=pickRegion(f,r,1,Math.round(520*K)),img=g.getImageData(R.x,R.y,R.w,R.h),d=img.data,src=new Uint8ClampedArray(d),w=R.w,h=R.h;
@@ -478,7 +483,7 @@ GL.shard=(f,r,k)=>{
   for(let i=0;i<n;i++){
     const c=f.geo.cells[(rnd()*f.ci)|0],m=(rnd()-.5)*(30+170*k)*K,pm=(rnd()-.5)*(6+20*k)*K,dx=Math.cos(c.ang)*m-Math.sin(c.ang)*pm,dy=Math.sin(c.ang)*m+Math.cos(c.ang)*pm,a=(rnd()-.5)*.05*k;
     g.save();g.beginPath();c.pts.forEach((p,j)=>j?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.clip();
-    g.translate(c.cx+dx,c.cy+dy);g.rotate(a);g.translate(-c.cx,-c.cy);g.drawImage(SNc,0,0);g.restore();
+    g.translate(c.cx+dx,c.cy+dy);g.rotate(a);g.translate(-c.cx,-c.cy);g.drawImage(SN(),0,0);g.restore();
     g.save();g.globalCompositeOperation='lighter';g.strokeStyle='hsla('+((f.hue+c.h*.22+360)%360|0)+','+(f.sat||100)+'%,75%,.85)';g.lineWidth=1.5*K;
     g.beginPath();c.pts.forEach((p,j)=>j?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.stroke();g.restore();
   }
@@ -491,7 +496,7 @@ GL.repeat=(f,r,k)=>{            /* a slice of the crack stamped again and again 
   const sx=clamp(Math.round(f.x-w/2),0,simW-w),sy=clamp(Math.round(f.y-h/2),0,simH-h);
   let ang=rnd()*TAU;
   if(f.si>0){const s=f.geo.segs[(rnd()*f.si)|0];ang=Math.atan2(s[3]-s[1],s[2]-s[0])+(rnd()<.5?0:Math.PI/2);}
-  sg.clearRect(0,0,640,640);sg.drawImage(SNc,sx,sy,w,h,0,0,w,h);
+  sg.clearRect(0,0,640,640);sg.drawImage(SN(),sx,sy,w,h,0,0,w,h);
   const n=4+Math.round(k*7),st=Math.max(10*K,Math.hypot(w,h)*(.18+rnd()*.3)),ca=Math.cos(ang),sa=Math.sin(ang);
   g.globalCompositeOperation='lighter';
   for(let i=1;i<=n;i++){g.globalAlpha=.6*(1-i/(n+1));g.drawImage(SCR,0,0,w,h,sx+ca*st*i,sy+sa*st*i,w,h);}
@@ -512,7 +517,7 @@ GL.scan=(f,r,k)=>{             /* CRT scanlines: rows shear sideways, dark gaps 
   const x0=clamp(Math.round(f.x-w/2),0,simW-w),y0=clamp(Math.round(f.y-h/2),0,Math.max(0,simH-h)),step=Math.max(2,Math.round((2+rnd()*3)*K));
   for(let y=0;y<h&&y0+y+step*2<=simH;y+=step*2){
     const off=Math.round((rnd()-.5)*(6+40*k)*K);
-    g.drawImage(SNc,x0,y0+y,w,step,x0+off,y0+y,w,step);
+    g.drawImage(SN(),x0,y0+y,w,step,x0+off,y0+y,w,step);
     g.fillStyle='rgba(0,0,0,.45)';g.fillRect(x0,y0+y+step,w,step);
   }
 };
@@ -521,7 +526,7 @@ GL.pump=(f,r,k)=>{            /* sidechain punch: a local ring of the picture sw
   const sx=clamp(Math.round(f.x-R),0,simW-2),sy=clamp(Math.round(f.y-R),0,simH-2),w=Math.min(simW-sx,Math.round(R*2)),h=Math.min(simH-sy,Math.round(R*2));
   g.save();g.beginPath();g.arc(f.x,f.y,R,0,TAU);g.clip();
   g.globalAlpha=.28+.22*k;const s=1.04+.05*k;g.translate(f.x,f.y);g.scale(s,s);g.translate(-f.x,-f.y);
-  g.drawImage(SNc,sx,sy,w,h,sx,sy,w,h);g.restore();
+  g.drawImage(SN(),sx,sy,w,h,sx,sy,w,h);g.restore();
   g.globalCompositeOperation='lighter';
   const gr=g.createRadialGradient(f.x,f.y,R*.55,f.x,f.y,R*1.1);
   gr.addColorStop(0,'hsla('+f.hue+','+(f.sat||100)+'%,55%,0)');gr.addColorStop(.75,'hsla('+f.hue+','+(f.sat||100)+'%,55%,'+(.07+.09*k)+')');gr.addColorStop(1,'hsla('+f.hue+','+(f.sat||100)+'%,50%,0)');
@@ -531,7 +536,7 @@ GL.mosaic=(f,r,k)=>{          /* bit-crush for pictures: a block of the image dr
   const w=Math.min(600,Math.round((120+rnd()*(120+300*k))*K)),h=Math.min(600,Math.round((90+rnd()*(100+250*k))*K));
   const sx=clamp(Math.round(f.x-w/2),0,simW-w),sy=clamp(Math.round(f.y-h/2),0,simH-h);
   const b=Math.max(4,Math.round((6+rnd()*(10+22*k))*K)),tw=Math.max(1,Math.round(w/b)),th=Math.max(1,Math.round(h/b));
-  sg.clearRect(0,0,640,640);sg.drawImage(SNc,sx,sy,w,h,0,0,tw,th);
+  sg.clearRect(0,0,640,640);sg.drawImage(SN(),sx,sy,w,h,0,0,tw,th);
   g.imageSmoothingEnabled=false;g.drawImage(SCR,0,0,tw,th,sx,sy,w,h);
 };
 /* every glitch belongs to exactly one fracture type, so no two types ever share an effect (15 glitches, 14 types) */
@@ -1059,24 +1064,32 @@ function spawnReplay(ev){
 /* ===== fade (also keeps the piece from whiting out) ===== */
 let fadeSh=7,fcount=0,lumAvg=0,fadeN=0;
 function trailEvery(){return 1;}   /* recording captures the live canvas exactly as it looks */
+/* WALL: the fade used to read + rewrite the WHOLE canvas every 4th frame (one big hitch each time on a slow chip).
+   now it does one horizontal quarter per frame, skips black pixels 4 bytes at a time, and skips bands that are all black.
+   the decay maths per pixel is unchanged, so the look is the same. */
+const FT=[4,5,6,7].map(sh=>{const t=new Uint8Array(256);for(let a=0;a<256;a++){const v=a-1-(a>>sh);t[a]=v<0?0:v;}return t;});
+const FB=4;let fadeBand=0,fSum=0,fCnt=0,fDecay=true;
 function fadePass(){
-  const ev=trailEvery(),decay=ev>0&&(fadeN++%ev)===0;
-  const img=g.getImageData(0,0,simW,simH),d=img.data,n=d.length,sh=fadeSh,W=96,gain=lumAvg>62?.86:lumAvg>46?.94:1;
-  let sum=0,cnt=0;
-  for(let i=0;i<n;i+=4){
-    let a=d[i],b=d[i+1],c=d[i+2];
-    if(a|b|c){
-      const m=a<b?(a<c?a:c):(b<c?b:c);
-      if(m>W){const w=(m-W)>>1;a-=w;b-=w;c-=w;}          /* pull white back toward colour */
-      if(gain<1){a=(a*gain)|0;b=(b*gain)|0;c=(c*gain)|0;}  /* whole-frame brightness governor */
-      if(decay){a-=1+(a>>sh);b-=1+(b>>sh);c-=1+(c>>sh);}
-      d[i]=a<0?0:a;d[i+1]=b<0?0:b;d[i+2]=c<0?0:c;
-    }
-    if((i&255)===0){sum+=(d[i]+d[i+1]+d[i+2])/3;cnt++;}
+  if(fadeBand===0){const ev=trailEvery();fDecay=ev>0&&(fadeN++%ev)===0;fSum=0;fCnt=0;}
+  const y0=Math.floor(simH*fadeBand/FB),y1=Math.floor(simH*(fadeBand+1)/FB);
+  const img=g.getImageData(0,y0,simW,y1-y0),d=img.data,p=new Uint32Array(d.buffer),n=p.length,sh=fadeSh,W=96,gain=lumAvg>62?.86:lumAvg>46?.94:1,decay=fDecay;
+  let sum=0,dirty=false;
+  const T=FT[sh-4];
+  for(let j=0;j<n;j++){
+    const v=p[j];if(!(v&0xffffff))continue;
+    let a=v&255,b=(v>>>8)&255,c=(v>>>16)&255;
+    const m=a<b?(a<c?a:c):(b<c?b:c);
+    if(m>W){const w=(m-W)>>1;a-=w;b-=w;c-=w;}          /* pull white back toward colour */
+    if(gain<1){a=(a*gain)|0;b=(b*gain)|0;c=(c*gain)|0;}  /* whole-frame brightness governor */
+    if(decay){a=T[a];b=T[b];c=T[c];}                    /* same as a-=1+(a>>sh), from a table */
+    p[j]=0xff000000|(c<<16)|(b<<8)|a;dirty=true;
+    if((j&63)===0)sum+=(a+b+c)/3;
   }
-  g.putImageData(img,0,0);
-  lumAvg=cnt?sum/cnt:0;fadeSh=lumAvg>50?4:lumAvg>34?5:lumAvg>20?6:7;
+  if(dirty)g.putImageData(img,0,y0);
+  fSum+=sum;fCnt+=(n+63)>>6;
+  if(++fadeBand>=FB){fadeBand=0;lumAvg=fCnt?fSum/fCnt:0;fadeSh=lumAvg>50?4:lumAvg>34?5:lumAvg>20?6:7;}
 }
+
 
 /* ===== input ===== */
 const hint=$('hint'),ui=$('ui'),info=$('info');
@@ -1971,7 +1984,7 @@ let slowSince=0;
 function qualityCheck(now){
   if(fms<45||held.size||exp||simLong<=900){slowSince=0;return;}
   if(!slowSince){slowSince=now;return;}
-  if(now-slowSince<3)return;
+  if(now-slowSince<1.5)return;
   slowSince=0;simLong=simLong>1600?1600:simLong>1200?1200:900;K=simLong/1600;
   try{localStorage.setItem(RES_KEY,simLong);}catch(_){}
   clearWorld();frs=frs.filter(f=>f.live);resize();
@@ -1995,8 +2008,8 @@ function frame(){
     while(mvq.length&&mvq[0].t+lat<=ac){const b=mvq.shift();if(metOn)beatLvl=b.f?1:b.a?.75:.4;}
     while(vq.length&&vq[0].t<=ac){const e=vq.shift();if(ac-e.t<.5&&e.vis)spawnReplay(e.ev);}
   }
-  if(++fcount%(fms>40?8:4)===0)fadePass();
-  syncSnap();
+  if(fms<=40||(++fcount&1))fadePass();   /* one quarter of the canvas per frame (every other frame when slow) */
+  snapDirty=true;
   for(let i=0;i<frs.length;i++){try{frs[i].step(now);}catch(e){frs[i].done=true;console.warn('fracture error',e);}}
   if(frs.some(f=>f.done))frs=frs.filter(f=>!f.done);
   if(shake>.3){cv.style.transform='translate('+((rnd()-.5)*shake*Z).toFixed(1)+'px,'+((rnd()-.5)*shake*Z).toFixed(1)+'px)';shake*=.88;}
@@ -2023,6 +2036,8 @@ function frame(){
   }catch(e){console.warn('frame error',e);}
 }
 requestAnimationFrame(frame);
+/* WALL: build the sound engine shortly after load instead of on the first touch, so the first touch doesn't freeze */
+setTimeout(()=>{try{initAudio();}catch(_){}},1200);
 /* offline: once this page has loaded with internet a single time, it keeps working with none */
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 })();
