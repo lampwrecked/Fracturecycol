@@ -15,6 +15,8 @@ Address: `https://lampwrecked.github.io/Fracturecycol/`
 - **Drawn by the board's graphics chip.** The live piece reads and rewrites pixels on the main processor, which the
   board can't keep up with. This version only uses drawing operations the graphics chip does itself. Four glitches
   (colour-split, acid, pixel-sort, static) were rebuilt that way, so their texture differs a little from the live piece.
+- **Cracks flow one way out of the touch.** Each fracture picks a heading (toward the middle of the screen when the
+  touch is near an edge) and everything fans forward from the touch; nothing grows backwards.
 - **Touch first.** A touch draws its first stretch of crack inside the touch event, before any sound is set up.
 - Up to 8 fingers can hold at once. After 75 s with no touch the layers leave a few at a time until the screen is
   black; while resting, a silent ghost crack appears about every 20 s.
@@ -26,7 +28,7 @@ A plugged-in keyboard: **C** clears everything, **M** mutes.
 
 Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, sound state) and a row of buttons appear:
 `RES −/+` picture detail, `LAYERS −/+`, `FX` glitch amount (2 full, 1 half, 0 lines only), `METER` brightness meter on/off,
-`AUDIO` switches how sound reaches the speakers (safe / fast / element), `SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
+`AUDIO` switches how sound reaches the speakers (safe / element / fast) or turns sound OFF entirely, `SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
 
 ## Settings (add to the end of the address, join with `&`)
 
@@ -34,6 +36,7 @@ Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, 
 |---|---|---|
 | `?debug=1` | start with the readout and tuning buttons showing | off |
 | `?fx=2` | glitch effects: 2 full, 1 half, 0 lines only | 2 |
+| `?audio=3` | sound: 1 safe, 0 fast, 2 element, 3 off | 1 |
 | `?layers=12` | looping layers kept (1–24) | 12 |
 | `?hands=8` | fingers that can hold at once | 8 |
 | `?idle=75` | seconds of no touch before it dissolves | 75 |

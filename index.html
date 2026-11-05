@@ -41,14 +41,14 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
      ?fast=1     experimental low-latency canvas (try it; remove it if the picture flickers)
      ?meter=0    turn off the brightness meter (try if it stutters about 3 times a second)
      ?fx=2       glitch effects: 2 full, 1 half, 0 lines only
-     ?audio=1    sound output: 1 safe (default), 0 fast, 2 element
+     ?audio=1    sound: 1 safe (default), 0 fast, 2 element, 3 off (no sound engine at all)
      ?debug=1    start with the readout + tuning buttons showing (or tap the bottom-left corner 5 times quickly)
    ===================================================================================================== */
 const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS;
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
-let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,2)),aEl=null,devErr=0;
+let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,3)),aEl=null,devErr=0;
 const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
@@ -165,10 +165,12 @@ function build(ox,oy,seed,maxR,owner,gen,limit){
     const id=crackId++;
     let pl=pl0,run=0,cd=depth?2:0;
     const jit=straight?.012:.1,kink=straight?.01:.06,trail=[[x,y]];
+    a=fwd(a);
     while(run<len&&segs.length<MAXSEG&&pl<=LIM){
       const st=(14+rng()*26)*K;
       a+=(rng()-.5)*jit;
       if(rng()<kink)a+=(rng()<.5?-1:1)*(.25+rng()*.45);
+      a=fwd(a);
       const nx=x+Math.cos(a)*st,ny=y+Math.sin(a)*st,ww=Math.max(.6,w*(1-.5*run/len));
       let hit=null;
       if(cd>0)cd--;else hit=findHit(x,y,nx,ny,id,ogrid,owner,now);
@@ -189,28 +191,31 @@ function build(ox,oy,seed,maxR,owner,gen,limit){
       if(x<-80||y<-80||x>simW+80||y>simH+80)break;
     }
   }
-  const a0=rng()*TAU,mode=rng(),Lg=()=>hyp*(.4+.55*rng()),hh=()=>(rng()-.5)*90;
+  /* BOARD: every crack flows ONE way out of the touch. the fracture picks a heading (leaning toward the middle of the
+     screen when the touch is near an edge, so it has room to run) and every arm, branch and kink is kept within a
+     forward fan around that heading. nothing grows backwards and nothing starts anywhere but the touch or a crack
+     that came from it. */
+  const SPREAD=1.3;
+  const dcx=simW/2-ox,dcy=simH/2-oy,edge=Math.min(1,Math.hypot(dcx,dcy)/(hyp*.5));
+  const a0=edge>.12?Math.atan2(dcy,dcx)+(rng()-.5)*TAU*(1-.78*edge):rng()*TAU;
+  const fwd=a=>{const d=Math.atan2(Math.sin(a-a0),Math.cos(a-a0));return d>SPREAD?a0+SPREAD:d<-SPREAD?a0-SPREAD:a;};
+  const mode=rng(),Lg=()=>hyp*(.4+.55*rng()),hh=()=>(rng()-.5)*90;
   nodes.push({x:ox,y:oy,pl:0,hd:a0,ang:a0,t:0});
-  if(mode<.26){            // one straight line through the point
-    walk(ox,oy,a0,Lg(),1.9,hh(),0,0,1,1.3,child(rng));
-    walk(ox,oy,a0+Math.PI+(rng()-.5)*.1,Lg(),1.9,hh(),0,0,1,1.3,child(rng));
-  }else if(mode<.52){      // lopsided tree: arms in a random cone, any direction
-    const n=3+((rng()*3)|0),cone=.6+rng()*2.6;
+  if(mode<.26){            // one straight line running out of the point, forking as it goes
+    walk(ox,oy,a0,Lg(),1.9,hh(),0,0,1,1.7,child(rng));
+  }else if(mode<.52){      // tree: a few arms fanning forward
+    const n=3+((rng()*3)|0),cone=.5+rng()*1.3;
     for(let i=0;i<n;i++)walk(ox,oy,a0+(i/(n-1)-.5)*cone+(rng()-.5)*.2,Lg(),1.8,hh(),0,0,0,1,child(rng));
-  }else if(mode<.8){       // crossing lines: one through the point, others cut across it
+  }else if(mode<.8){       // spine: one line out of the point, with straight offshoots leaving it further along
     const L1=Lg();
     walk(ox,oy,a0,L1,1.9,hh(),0,0,1,.8,child(rng));
-    walk(ox,oy,a0+Math.PI,Lg(),1.9,hh(),0,0,1,.8,child(rng));
     const n=2+((rng()*3)|0);
     for(let i=0;i<n;i++){
-      const s=(rng()-.5)*1.2*L1,off=(rng()<.5?-1:1)*(.05+rng()*.2)*hyp*.5;
-      const sx=ox+Math.cos(a0)*s-Math.sin(a0)*off,sy=oy+Math.sin(a0)*s+Math.cos(a0)*off;
-      const phi=-Math.sign(off)*(.4+rng()*2.3);
-      walk(sx,sy,a0+phi,Lg(),1.6,hh(),0,Math.hypot(sx-ox,sy-oy),1,.8,child(rng));
+      const s=(.1+.7*rng())*L1,sx=ox+Math.cos(a0)*s,sy=oy+Math.sin(a0)*s,phi=(rng()<.5?-1:1)*(.35+rng()*.85);
+      walk(sx,sy,a0+phi,Lg()*.75,1.6,hh(),0,s,1,.8,child(rng));
     }
-  }else{                   // lightning: one-sided trunk, heavy forking
+  }else{                   // lightning: one trunk, heavy forking
     walk(ox,oy,a0,hyp*(.6+.4*rng()),1.9,hh(),0,0,0,2.3,child(rng));
-    walk(ox,oy,a0+Math.PI+(rng()-.5)*.6,hyp*(.1+.2*rng()),1.5,hh(),0,0,0,1.5,child(rng));
   }
   if(!limit)touchWorld({own},owner);
   segs.sort((a,b)=>a[4]-b[4]);cells.sort((a,b)=>a.d-b.d);nodes.sort((a,b)=>a.pl-b.pl);
@@ -491,6 +496,8 @@ let audioDead=false;
    so: also unlock on those, play one silent sample (what iOS needs to really start), resume after an
    interruption (app switch, call, lock screen), and ask iOS to treat this as media playback so the
    ringer/silent switch doesn't mute it. */
+/* with sound switched off the loop still needs something to keep time by */
+const silentClock=()=>({get currentTime(){return performance.now()/1000;},state:'running',sampleRate:0,silent:true,resume(){return Promise.resolve();},close(){return Promise.resolve();}});
 function unlockAudio(){
   try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback';}catch(_){}
   try{initAudio();}catch(_){}
@@ -507,6 +514,7 @@ function initAudio(){
   try{initAudioInner();}catch(e){console.warn('audio init failed',e);audioDead=true;try{AC&&AC.close();}catch(_){}AC=null;}
 }
 function initAudioInner(){
+  if(AMODE===3){if(!AC)AC=silentClock();return;}     /* sound off: no sound engine is built at all, only a clock for the loop */
   if(AC){if(AC.state!=='running')AC.resume();return;}
   const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
   AC=new Ctx({latencyHint:AMODE===0?'interactive':'playback'});
@@ -721,6 +729,7 @@ V.riser=(t,f)=>{
 };
 
 function impact(t,p){
+  if(AMODE===3)return;
   if(!AC)return;
   const out=outNode(.25,.45),n=noiseSrc(t),hp=bq('highpass',900+rnd()*2200),gg=gn(0);
   gg.gain.setValueAtTime(.3+.7*p,t);gg.gain.setTargetAtTime(0,t,.02+.05*p);
@@ -728,6 +737,7 @@ function impact(t,p){
   if(p>.25){const o=osc('sine',150,t),og=gn(0);og.gain.setValueAtTime(.55*p,t);og.gain.setTargetAtTime(0,t,.07);sp(o.frequency,38,t,.05);o.connect(og);og.connect(out);o.stop(t+.6);}
 }
 function tickSnd(t,k){
+  if(AMODE===3)return;
   if(!AC)return;
   const out=outNode(.2,.3),n=noiseSrc(t),bp=bq('bandpass',2500+k*450,6),gg=gn(0),mk=gn(3);
   gg.gain.setValueAtTime(.9,t);gg.gain.setTargetAtTime(0,t,.008);
@@ -737,6 +747,7 @@ function tickSnd(t,k){
 /* each glitch a fracture makes also hits the audio: tear = filter dip, sort = highpass sweep, blocks/post = bitcrush,
    rgb/invert = ring mod, shard = metal resonator, echo = delay throw, smear = reverb swell, slice = gate chop */
 function audioFX(name,q){
+  if(AMODE===3)return;
   if(!AC||!mf)return;
   const t=AC.currentTime+.005;
   if(t-(fxLast[name]||0)<(({slice:.6,pump:.5,repeat:.15})[name]||.07))return;
@@ -766,6 +777,7 @@ let gateBusy=0,lastStut=-9;
    layer, which drowned everything else. now: dips (not silence), smoothed edges (no clicks), lands on the 16th grid,
    and at most once every 2 bars however many layers ask for it. */
 function stutter(t,depth){
+  if(AMODE===3)return;
   if(!AC||t<gateBusy||t-lastStut<STEP*32)return;
   if(loopT0!==null)t=Math.max(t,loopT0+Math.ceil((t-loopT0)/STEP-1e-6)*STEP);
   const d=STEP/2,n=6,lo=depth==null?.4:depth,gg=gate.gain;
@@ -804,6 +816,7 @@ const events=[],vq=[];
    hold or a fast roll never dumps hundreds of nodes onto the page in a single moment */
 const jobs=[];
 function playEvent(ev,t){
+  if(AMODE===3)return;
   curLayer=ev.lg||null;
   try{
   const h=V[ev.inst](t,ev.f);
@@ -1040,7 +1053,7 @@ function begin(e){
   /* the sound is built straight after, in its own turn, so it can never delay the line */
   setTimeout(()=>{
     try{
-      initAudio();if(!AC)return;
+      initAudio();if(!AC||AMODE===3)return;
       const v=V[inst](Math.max(t+.003,AC.currentTime),f);
       if(fr.released)v.end(AC.currentTime+.02,fr.p||.05);else fr.voice=v;
     }catch(err){console.warn(err);}
@@ -1147,7 +1160,7 @@ function softReset(){
 function rebuildAudio(why){
   const old=AC,hadLoop=loopT0!==null;let phase=0;
   if(old&&hadLoop)phase=(((old.currentTime-loopT0)%LOOP)+LOOP)%LOOP;
-  try{if(old)old.close();}catch(_){}
+  try{if(old){const p=old.close();if(p&&p.catch)p.catch(()=>{});}}catch(_){}
   AC=null;audioDead=false;an=null;jobs.length=0;vq.length=0;mvq.length=0;gateBusy=0;lastStut=-9;for(const k in fxLast)delete fxLast[k];
   initAudio();if(!AC)return;
   try{AC.resume();}catch(_){}
@@ -1156,6 +1169,7 @@ function rebuildAudio(why){
   hardFix++;fixWhy=why;lastRebuild=performance.now()/1000;quietSince=0;softAt=0;notRunSince=0;
 }
 function watchdog(now){
+  if(AMODE===3){outPk=0;return;}
   const lv=level();outPk=Math.max(outPk*.6,lv===lv?lv:0);
   if(!AC||!soundOn)return;
   if(AC.state!=='running'){
@@ -1182,7 +1196,7 @@ function stepRes(d){let i=0;RSTEPS.forEach((v,j)=>{if(Math.abs(v-simLong)<Math.a
 function stepLayers(d){MAXV=clamp(MAXV+d,1,24);LSset('layers',MAXV);while(events.length>MAXV)events.shift();}
 function soundTest(){
   /* rebuild the sound engine inside this tap, then play a plain beep straight to the speakers (it skips the whole effects chain) */
-  rebuildAudio('test');if(!AC)return;
+  rebuildAudio('test');if(!AC||AMODE===3)return;
   const o=AC.createOscillator(),a=AC.createGain(),t=AC.currentTime+.05;o.frequency.value=660;a.gain.setValueAtTime(.25,t);a.gain.setTargetAtTime(0,t+.35,.05);
   o.connect(a);outTo(a);o.start(t);o.stop(t+.7);
 }
@@ -1190,7 +1204,7 @@ function soundTest(){
 const tap=(id,fn)=>{$(id).addEventListener('click',e=>{e.stopPropagation();poke();if(performance.now()-tuneAt<1000)return;try{fn();}catch(err){console.warn(err);}});};
 tap('pResD',()=>stepRes(-1));tap('pResU',()=>stepRes(1));tap('pLayD',()=>stepLayers(-1));tap('pLayU',()=>stepLayers(1));
 tap('pFx',()=>{FX=(FX+2)%3;LSset('fx',FX);});tap('pMeter',()=>{METER=!METER;LSset('meter',METER?1:0);});
-tap('pSnd',soundTest);tap('pAud',()=>{AMODE=(AMODE+1)%3;LSset('audio',AMODE);soundTest();});tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
+tap('pSnd',soundTest);tap('pAud',()=>{AMODE=({1:2,2:0,0:3,3:1})[AMODE];LSset('audio',AMODE);soundTest();});tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
 function frame(){
   requestAnimationFrame(frame);
   try{
@@ -1223,9 +1237,9 @@ function frame(){
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      dbg.textContent='B5  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+      dbg.textContent='B6  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
-        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
+        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element','OFF'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
     }
   }
