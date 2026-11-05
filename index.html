@@ -19,7 +19,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
 <body>
 <canvas id="c"></canvas>
 <div id="dbg"></div>
-<div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pAud">AUDIO</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
+<div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pTrD">TRAILS −</button><button id="pTrU">TRAILS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pAud">AUDIO</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
 <script>
 (()=>{
 'use strict';
@@ -35,7 +35,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
      ?hands=8    fingers that can hold at once
      ?idle=75    seconds with no touch before the piece dissolves back to black
      ?ghost=20   seconds between silent ghost cracks while resting (0 = off)
-     ?fade=1     how fast light fades (2 = twice as fast, 0.5 = half)
+     ?trails=4   how long light lingers before fading to black (1 = like the live piece on a fast phone, 8 = twice as long as 4)
      ?res=1920   canvas detail on the long edge (steps down by itself if too slow, and remembers)
      ?fs=0       don't go fullscreen on first touch
      ?fast=1     experimental low-latency canvas (try it; remove it if the picture flickers)
@@ -49,7 +49,8 @@ const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
 let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,3)),aEl=null,devErr=0;
-const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
+let TRAILS=qn('trails',LS('trails',4),.5,40);
+const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
 const cv=$('c'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
@@ -1006,7 +1007,7 @@ function spawnReplay(ev){
    1) a faint black wash takes a fraction off everything (stronger when more layers are playing, so it never whites out)
    2) a 'difference' fill with the darkest possible grey takes 1 off every colour value, so trails really reach black
       (pure black flickers between 0 and 1 out of 255, which no screen shows) */
-let fadeAcc=0,lumAvg=0,whiteFrac=0,lumT=0;
+let fadeAcc=0,govAcc=0,lumAvg=0,whiteFrac=0,lumT=0;
 /* brightness meter: the graphics chip shrinks the picture to a thumbnail and only that thumbnail is read back
    (about 3 times a second). it tells the fade how hard to work so the piece never whites out. ?meter=0 turns it off. */
 const MW=384,MH=216,Mc=document.createElement('canvas');Mc.width=MW;Mc.height=MH;
@@ -1017,17 +1018,23 @@ function measure(){
   for(let i=0;i<d.length;i+=16){const a=d[i],b=d[i+1],c=d[i+2];s+=a+b+c;if((a<b?(a<c?a:c):(b<c?b:c))>150)w++;n++;}
   lumAvg=s/(3*n);whiteFrac=w/n;
 }
-function fadePass(){
-  let a;
-  if(METER){
-    a=lumAvg>50?1/16:lumAvg>34?1/32:lumAvg>20?1/64:1/128;      /* same steps the live piece uses */
-    if(lumAvg>62)a+=.14;else if(lumAvg>46)a+=.06;              /* whole-frame brightness governor */
-    a+=Math.min(.12,whiteFrac*.7);                              /* pull whited-out areas back */
-  }else{const n=events.length+held.size;a=n>9?1/10:n>6?1/16:n>3?1/28:1/56;}
-  a*=FADE;
-  g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='rgba(0,0,0,'+Math.min(.6,a).toFixed(4)+')';g.fillRect(0,0,simW,simH);
+/* two separate jobs:
+   - the slow, steady fade that lets fractures pile up on each other. TRAILS sets how long light lingers (tuning panel).
+   - the brightness governor, which only acts when the meter says the picture is getting too bright, and always acts fast. */
+function fadeBase(){
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='rgba(0,0,0,.0079)';g.fillRect(0,0,simW,simH);
   g.globalCompositeOperation='difference';g.fillStyle='#010101';g.fillRect(0,0,simW,simH);
   g.globalCompositeOperation='source-over';
+}
+function fadeGovern(){
+  let a=0;
+  if(METER){
+    a=lumAvg>50?1/16:lumAvg>34?1/32:lumAvg>24?1/64:0;          /* same steps the live piece uses */
+    if(lumAvg>62)a+=.14;else if(lumAvg>46)a+=.06;              /* whole-frame brightness governor */
+    a+=Math.min(.12,whiteFrac*.7);                              /* pull whited-out areas back */
+  }else{const n=events.length+held.size;a=n>9?1/14:n>6?1/24:n>3?1/48:0;}
+  if(a<=0)return;
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='rgba(0,0,0,'+Math.min(.6,a).toFixed(4)+')';g.fillRect(0,0,simW,simH);
 }
 
 /* ===== input: the picture comes first ===== */
@@ -1110,7 +1117,7 @@ function idleTick(now){
     if(idle>IDLE&&now-lastDrop>=LOOP){lastDrop=now;events.splice(0,Math.max(1,Math.ceil(events.length/4)));}
     return;
   }
-  if(!resting){if(now-lastActive>(METER&&lumAvg<1.2?4:20))rest(now);return;}     /* rest once the picture has faded to black */
+  if(!resting){if(now-lastActive>(METER&&lumAvg<1.2?4:20+TRAILS*8))rest(now);return;}     /* rest once the picture has faded to black */
   if(GHOST>0&&now>nextGhost&&!frs.length)ghost(now);
 }
 /* a plugged-in keyboard: C clears everything, M mutes */
@@ -1203,6 +1210,7 @@ function soundTest(){
 /* buttons ignore the first second after the panel opens: the finger that opened it is still lifting off */
 const tap=(id,fn)=>{$(id).addEventListener('click',e=>{e.stopPropagation();poke();if(performance.now()-tuneAt<1000)return;try{fn();}catch(err){console.warn(err);}});};
 tap('pResD',()=>stepRes(-1));tap('pResU',()=>stepRes(1));tap('pLayD',()=>stepLayers(-1));tap('pLayU',()=>stepLayers(1));
+tap('pTrD',()=>{TRAILS=Math.max(.5,+(TRAILS/1.5).toFixed(2));LSset('trails',TRAILS);});tap('pTrU',()=>{TRAILS=Math.min(40,+(TRAILS*1.5).toFixed(2));LSset('trails',TRAILS);});
 tap('pFx',()=>{FX=(FX+2)%3;LSset('fx',FX);});tap('pMeter',()=>{METER=!METER;LSset('meter',METER?1:0);});
 tap('pSnd',soundTest);tap('pAud',()=>{AMODE=({1:2,2:0,0:3,3:1})[AMODE];LSset('audio',AMODE);soundTest();});tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
 function frame(){
@@ -1230,15 +1238,18 @@ function frame(){
   }
   fadeAcc+=Math.min(dt,.25);
   if(METER&&now-lumT>.3&&(!resting||frs.length)){lumT=now;try{measure();}catch(_){}}
-  if(fadeAcc>=1/15){fadeAcc=Math.min(fadeAcc-1/15,1/15);if(!resting||frs.length)fadePass();}
+  govAcc+=Math.min(dt,.25);
+  const fEvery=TRAILS/15,live=!resting||frs.length;
+  if(fadeAcc>=fEvery){fadeAcc=Math.min(fadeAcc-fEvery,fEvery);if(live)fadeBase();}
+  if(govAcc>=1/15){govAcc=Math.min(govAcc-1/15,1/15);if(live)fadeGovern();}
   snapDirty=true;
   for(let i=0;i<frs.length;i++){try{frs[i].step(now);}catch(e){frs[i].done=true;console.warn('fracture error',e);}}
   if(frs.some(f=>f.done))frs=frs.filter(f=>!f.done);
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      dbg.textContent='B6  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
-        +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
+      dbg.textContent='B7  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+        +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  trails '+TRAILS+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
         +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element','OFF'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
     }

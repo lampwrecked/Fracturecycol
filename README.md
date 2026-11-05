@@ -27,7 +27,7 @@ A plugged-in keyboard: **C** clears everything, **M** mutes.
 ## Hidden tuning panel
 
 Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, sound state) and a row of buttons appear:
-`RES −/+` picture detail, `LAYERS −/+`, `FX` glitch amount (2 full, 1 half, 0 lines only), `METER` brightness meter on/off,
+`RES −/+` picture detail, `LAYERS −/+`, `TRAILS −/+` how long light lingers so fractures build on each other, `FX` glitch amount (2 full, 1 half, 0 lines only), `METER` brightness meter on/off,
 `AUDIO` switches how sound reaches the speakers (safe / element / fast) or turns sound OFF entirely, `SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
 
 ## Settings (add to the end of the address, join with `&`)
@@ -41,7 +41,7 @@ Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, 
 | `?hands=8` | fingers that can hold at once | 8 |
 | `?idle=75` | seconds of no touch before it dissolves | 75 |
 | `?ghost=20` | seconds between resting ghosts (0 = off) | 20 |
-| `?fade=1` | how fast light fades (2 = twice as fast) | 1 |
+| `?trails=4` | how long light lingers before fading to black (bigger = longer) | 4 |
 | `?res=1920` | picture detail; also resets the remembered value | 1920, steps down by itself if too slow |
 | `?meter=0` | turn off the brightness meter (try if it stutters about 3 times a second) | on |
 | `?fast=1` | experimental low-latency drawing (remove if the picture flickers) | off |
