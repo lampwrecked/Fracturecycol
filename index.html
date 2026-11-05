@@ -9,13 +9,17 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:none}
-/* nothing is ever written on screen. this readout only exists when the address ends in ?debug=1 */
-#dbg{position:fixed;left:12px;top:10px;font:15px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#9f9;background:rgba(0,0,0,.65);padding:5px 8px;pointer-events:none;display:none;white-space:pre}
+/* nothing is ever written on screen. the readout + tuning buttons only appear after 5 quick taps in the bottom-left corner (or ?debug=1) */
+#dbg{position:fixed;left:12px;top:10px;font:max(14px,1.7vmin)/1.35 ui-monospace,Menlo,Consolas,monospace;color:#9f9;background:rgba(0,0,0,.7);padding:6px 9px;pointer-events:none;display:none;white-space:pre}
+#pan{position:fixed;left:20vmin;bottom:12px;display:none;flex-wrap:wrap;gap:8px;max-width:calc(96vw - 20vmin)}
+#pan button{font:max(14px,1.9vmin)/1 ui-monospace,Menlo,Consolas,monospace;color:#9f9;background:rgba(0,0,0,.8);border:1px solid #9f9;padding:1.3vmin 1.6vmin;border-radius:0}
+body.tune #dbg{display:block}body.tune #pan{display:flex}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="dbg"></div>
+<div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
 <script>
 (()=>{
 'use strict';
@@ -36,21 +40,24 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
      ?fs=0       don't go fullscreen on first touch
      ?fast=1     experimental low-latency canvas (try it; remove it if the picture flickers)
      ?meter=0    turn off the brightness meter (try if it stutters about 3 times a second)
-     ?debug=1    show a small speed readout in the top-left corner
+     ?fx=2       glitch effects: 2 full, 1 half, 0 lines only
+     ?debug=1    start with the readout + tuning buttons showing (or tap the bottom-left corner 5 times quickly)
    ===================================================================================================== */
 const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS;
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
-const MAXV=Math.round(qn('layers',12,1,24)),HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
-const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1',METER=QP.get('meter')!=='0';
+const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
+let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual',0)===1;
+const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
+const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
-const cv=$('c'),dbg=$('dbg');if(DEBUG)dbg.style.display='block';
+const cv=$('c'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
 const g=cv.getContext('2d',FAST?{alpha:false,desynchronized:true,willReadFrequently:false}:{alpha:false,willReadFrequently:false});
 const RES_KEY='fracture-board-res';
 let simLong=(()=>{
   if(QP.has('res')){try{localStorage.removeItem(RES_KEY);}catch(_){}return Math.round(qn('res',1920,600,3840));}
   let s=0;try{s=+localStorage.getItem(RES_KEY)||0;}catch(_){}
-  return s>=960&&s<=1920?s:1920;
+  return s>=480&&s<=2560?s:1920;
 })(),K=simLong/1600;
 let simW=0,simH=0;
 let rnd=Math.random;
@@ -1004,7 +1011,13 @@ function begin(e){
   },0);
 }
 function end(e){poke();const fr=held.get(e.pointerId);if(fr){held.delete(e.pointerId);fr.release();}}
-cv.addEventListener('pointerdown',e=>{e.preventDefault();poke();begin(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+let cTaps=[];
+function cornerTap(e){
+  const z=Math.min(innerWidth,innerHeight)*.16;if(e.clientX>z||e.clientY<innerHeight-z)return;
+  const t=performance.now();cTaps=cTaps.filter(x=>t-x<3000);cTaps.push(t);
+  if(cTaps.length>=5){cTaps=[];setTune(!tune);}
+}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();poke();cornerTap(e);begin(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
 cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
 /* the board must never zoom, scroll, or pop a browser menu when the public touches it */
 document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
@@ -1066,17 +1079,39 @@ addEventListener('keydown',e=>{
 });
 
 /* ===== main loop ===== */
-/* if the page stays under ~24 frames a second for 2 s, the canvas drops a step in detail (1920 -> 1600 -> 1280 -> 960), remembered */
+/* if the page stays under ~24 frames a second for 1.5 s, the canvas drops a step in detail (1920 -> 1600 -> 1280 -> 960 -> 640), remembered.
+   once RES is set by hand in the tuning panel, it stays where it was put. */
 let slowSince=0;
+function setRes(v){simLong=v;K=simLong/1600;try{localStorage.setItem(RES_KEY,simLong);}catch(_){}clearWorld();frs=frs.filter(f=>f.live);resize();}
 function qualityCheck(now){
-  if(fms<42||simLong<=960){slowSince=0;return;}
+  if(manualRes||fms<42||simLong<=640){slowSince=0;return;}
   if(!slowSince){slowSince=now;return;}
-  if(now-slowSince<2)return;
-  slowSince=0;simLong=simLong>1600?1600:simLong>1280?1280:960;K=simLong/1600;
-  try{localStorage.setItem(RES_KEY,simLong);}catch(_){}
-  clearWorld();frs=frs.filter(f=>f.live);resize();
+  if(now-slowSince<1.5)return;
+  slowSince=0;setRes(simLong>1600?1600:simLong>1280?1280:simLong>960?960:640);
 }
-let lastFrameT=0,fms=16,lastResume=0,worst=0,jsMs=0;
+let lastFrameT=0,fms=16,lastResume=0,worst=0,jsMs=0,dbgN=0,an=null,anBuf=null,outPk=0;
+const UA=((navigator.userAgent.match(/(Chrome|Firefox|Version)\/[\d.]+/)||[''])[0])+' '+((navigator.userAgent.match(/Android [\d.]+/)||[''])[0]);
+/* ===== hidden tuning panel: 5 quick taps in the bottom-left corner. everything set here is remembered on this screen ===== */
+let tuneAt=0;
+function setTune(on){tune=on;tuneAt=performance.now();document.body.classList.toggle('tune',on);}
+const RSTEPS=[480,640,800,960,1280,1600,1920,2560];
+function stepRes(d){let i=0;RSTEPS.forEach((v,j)=>{if(Math.abs(v-simLong)<Math.abs(RSTEPS[i]-simLong))i=j;});i=clamp(i+d,0,RSTEPS.length-1);manualRes=true;LSset('manual',1);setRes(RSTEPS[i]);}
+function stepLayers(d){MAXV=clamp(MAXV+d,1,24);LSset('layers',MAXV);while(events.length>MAXV)events.shift();}
+function soundTest(){
+  /* rebuild the sound engine inside this tap, then play a plain beep straight to the speakers (it skips the whole effects chain) */
+  try{if(AC)AC.close();}catch(_){}
+  AC=null;audioDead=false;an=null;jobs.length=0;loopT0=null;events.length=0;vq.length=0;mvq.length=0;
+  held.forEach(fr=>{fr.voice=null;});
+  initAudio();if(!AC)return;
+  try{AC.resume();}catch(_){}
+  const o=AC.createOscillator(),a=AC.createGain(),t=AC.currentTime+.05;o.frequency.value=660;a.gain.setValueAtTime(.25,t);a.gain.setTargetAtTime(0,t+.35,.05);
+  o.connect(a);a.connect(AC.destination);o.start(t);o.stop(t+.7);
+}
+/* buttons ignore the first second after the panel opens: the finger that opened it is still lifting off */
+const tap=(id,fn)=>{$(id).addEventListener('click',e=>{e.stopPropagation();poke();if(performance.now()-tuneAt<1000)return;try{fn();}catch(err){console.warn(err);}});};
+tap('pResD',()=>stepRes(-1));tap('pResU',()=>stepRes(1));tap('pLayD',()=>stepLayers(-1));tap('pLayU',()=>stepLayers(1));
+tap('pFx',()=>{FX=(FX+2)%3;LSset('fx',FX);});tap('pMeter',()=>{METER=!METER;LSset('meter',METER?1:0);});
+tap('pSnd',soundTest);tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
 function frame(){
   requestAnimationFrame(frame);
   try{
@@ -1087,6 +1122,7 @@ function frame(){
   if(lastFrameT){fms=fms*.9+dt*1000*.1;worst=Math.max(worst*.985,dt*1000);}lastFrameT=now;
   budget=fms>48?1:fms>32?2:3;
   rbudget=fms>50?2:fms>34?4:fms>24?7:10;
+  if(FX<2){budget=FX?Math.min(budget,1):0;rbudget=FX?Math.min(rbudget,3):0;}
   qualityCheck(now);
   idleTick(now);
   if(AC){
@@ -1102,9 +1138,17 @@ function frame(){
   snapDirty=true;
   for(let i=0;i<frs.length;i++){try{frs[i].step(now);}catch(e){frs[i].done=true;console.warn('fracture error',e);}}
   if(frs.some(f=>f.done))frs=frs.filter(f=>!f.done);
-  if(DEBUG){
+  if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
-    dbg.textContent='B1  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms\nres '+simLong+'  screen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  layers '+events.length+'/'+MAXV+'  lum '+lumAvg.toFixed(0)+'  audio '+(AC?AC.state:'none');
+    if(++dbgN%6===0){
+      let lvl=0;
+      if(AC&&master){try{if(!an||an.context!==AC){an=AC.createAnalyser();an.fftSize=512;anBuf=new Float32Array(512);master.connect(an);}an.getFloatTimeDomainData(anBuf);for(let i=0;i<512;i++){const v=Math.abs(anBuf[i]);if(v>lvl)lvl=v;}}catch(_){}}
+      outPk=Math.max(outPk*.9,lvl);
+      dbg.textContent='B2  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms'
+        +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
+        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')
+        +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
+    }
   }
   }catch(e){console.warn('frame error',e);}
 }

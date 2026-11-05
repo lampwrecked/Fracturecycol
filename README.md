@@ -22,11 +22,18 @@ Address: `https://lampwrecked.github.io/Fracturecycol/`
 
 A plugged-in keyboard: **C** clears everything, **M** mutes.
 
+## Hidden tuning panel
+
+Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, sound state) and a row of buttons appear:
+`RES −/+` picture detail, `LAYERS −/+`, `FX` glitch amount (2 full, 1 half, 0 lines only), `METER` brightness meter on/off,
+`SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
+
 ## Settings (add to the end of the address, join with `&`)
 
 | Add this | What it does | Default |
 |---|---|---|
-| `?debug=1` | small speed readout in the top-left corner | off |
+| `?debug=1` | start with the readout and tuning buttons showing | off |
+| `?fx=2` | glitch effects: 2 full, 1 half, 0 lines only | 2 |
 | `?layers=12` | looping layers kept (1–24) | 12 |
 | `?hands=8` | fingers that can hold at once | 8 |
 | `?idle=75` | seconds of no touch before it dissolves | 75 |
