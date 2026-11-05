@@ -26,7 +26,7 @@ A plugged-in keyboard: **C** clears everything, **M** mutes.
 
 Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, sound state) and a row of buttons appear:
 `RES −/+` picture detail, `LAYERS −/+`, `FX` glitch amount (2 full, 1 half, 0 lines only), `METER` brightness meter on/off,
-`SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
+`AUDIO` switches how sound reaches the speakers (safe / fast / element), `SOUND TEST` rebuilds the sound and plays a plain beep, `CLEAR`, `HIDE`. Whatever is set here is remembered on that screen.
 
 ## Settings (add to the end of the address, join with `&`)
 

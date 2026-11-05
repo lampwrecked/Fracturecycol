@@ -19,7 +19,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
 <body>
 <canvas id="c"></canvas>
 <div id="dbg"></div>
-<div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
+<div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pAud">AUDIO</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
 <script>
 (()=>{
 'use strict';
@@ -41,13 +41,14 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
      ?fast=1     experimental low-latency canvas (try it; remove it if the picture flickers)
      ?meter=0    turn off the brightness meter (try if it stutters about 3 times a second)
      ?fx=2       glitch effects: 2 full, 1 half, 0 lines only
+     ?audio=1    sound output: 1 safe (default), 0 fast, 2 element
      ?debug=1    start with the readout + tuning buttons showing (or tap the bottom-left corner 5 times quickly)
    ===================================================================================================== */
 const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS;
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
-let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1;
+let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,2)),aEl=null,devErr=0;
 const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
@@ -508,7 +509,8 @@ function initAudio(){
 function initAudioInner(){
   if(AC){if(AC.state!=='running')AC.resume();return;}
   const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
-  AC=new Ctx({latencyHint:'interactive'});
+  AC=new Ctx({latencyHint:AMODE===0?'interactive':'playback'});
+  try{AC.addEventListener('error',()=>{devErr++;needRebuild=true;});}catch(_){}
   noiseBuf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);
   {const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=rnd()*2-1;}
   bus=AC.createGain();
@@ -538,7 +540,7 @@ function initAudioInner(){
   const nsrc=noiseSrc(AC.currentTime),nbp=bq('bandpass',1800,1.2);noiseWet=gn(0);
   nsrc.connect(nbp);nbp.connect(noiseWet);noiseWet.connect(fxSum);
   duck=gn(1);
-  fxSum.connect(duck);duck.connect(lim);lim.connect(gate);gate.connect(master);master.connect(AC.destination);
+  fxSum.connect(duck);duck.connect(lim);lim.connect(gate);gate.connect(master);outTo(master);
   dlyIn=AC.createGain();
   const dly=AC.createDelay(2);dly.delayTime.value=60/BPM*.75;
   const fb=AC.createGain();fb.gain.value=.42;
@@ -550,6 +552,16 @@ function initAudioInner(){
   const vout=AC.createGain();vout.gain.value=.35;
   vrbIn.connect(conv);conv.connect(vout);vout.connect(comp);
   if(AC.state==='suspended')AC.resume();
+}
+/* BOARD: three ways of getting sound to the speakers (AUDIO button in the tuning panel, remembered):
+   safe    = a large, forgiving sound buffer. slower to speak but it keeps going on a weak chip (default)
+   fast    = the smallest buffer, like the live piece. tightest timing, but the board's sound output drops out
+   element = the mix is played through an ordinary audio player element, the path video and music use */
+function outTo(n){
+  if(AMODE===2){
+    try{const md=AC.createMediaStreamDestination();n.connect(md);if(!aEl){aEl=new Audio();aEl.autoplay=true;}aEl.srcObject=md.stream;const p=aEl.play();if(p&&p.catch)p.catch(()=>{});return;}catch(_){}
+  }
+  n.connect(AC.destination);
 }
 function gn(v){const x=AC.createGain();x.gain.value=v;return x;}
 function bq(type,fr,q){const b=AC.createBiquadFilter();b.type=type;b.frequency.value=fr;if(q!=null)b.Q.value=q;return b;}
@@ -1172,13 +1184,13 @@ function soundTest(){
   /* rebuild the sound engine inside this tap, then play a plain beep straight to the speakers (it skips the whole effects chain) */
   rebuildAudio('test');if(!AC)return;
   const o=AC.createOscillator(),a=AC.createGain(),t=AC.currentTime+.05;o.frequency.value=660;a.gain.setValueAtTime(.25,t);a.gain.setTargetAtTime(0,t+.35,.05);
-  o.connect(a);a.connect(AC.destination);o.start(t);o.stop(t+.7);
+  o.connect(a);outTo(a);o.start(t);o.stop(t+.7);
 }
 /* buttons ignore the first second after the panel opens: the finger that opened it is still lifting off */
 const tap=(id,fn)=>{$(id).addEventListener('click',e=>{e.stopPropagation();poke();if(performance.now()-tuneAt<1000)return;try{fn();}catch(err){console.warn(err);}});};
 tap('pResD',()=>stepRes(-1));tap('pResU',()=>stepRes(1));tap('pLayD',()=>stepLayers(-1));tap('pLayU',()=>stepLayers(1));
 tap('pFx',()=>{FX=(FX+2)%3;LSset('fx',FX);});tap('pMeter',()=>{METER=!METER;LSset('meter',METER?1:0);});
-tap('pSnd',soundTest);tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
+tap('pSnd',soundTest);tap('pAud',()=>{AMODE=(AMODE+1)%3;LSset('audio',AMODE);soundTest();});tap('pClr',()=>clearAll());tap('pHide',()=>setTune(false));
 function frame(){
   requestAnimationFrame(frame);
   try{
@@ -1198,8 +1210,9 @@ function frame(){
     const ac=AC.currentTime;
     while(mvq.length&&mvq[0].t<=ac)mvq.shift();
     /* at most one layer is re-grown per frame, so layers that land on the same beat can't stall a frame (and a waiting touch) */
+    const lat=Math.min(.35,AC.outputLatency||AC.baseLatency||0);     /* show a layer when its sound actually reaches the speakers */
     let nb=0;
-    while(vq.length&&vq[0].t<=ac&&nb<1){const e=vq.shift();if(ac-e.t<.5&&e.vis){spawnReplay(e.ev);nb++;}}
+    while(vq.length&&vq[0].t+lat<=ac&&nb<1){const e=vq.shift();if(ac-e.t<.9&&e.vis){spawnReplay(e.ev);nb++;}}
   }
   fadeAcc+=Math.min(dt,.25);
   if(METER&&now-lumT>.3&&(!resting||frs.length)){lumT=now;try{measure();}catch(_){}}
@@ -1210,9 +1223,9 @@ function frame(){
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      dbg.textContent='B4  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+      dbg.textContent='B5  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
-        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')
+        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
     }
   }
