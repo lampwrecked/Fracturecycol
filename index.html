@@ -47,13 +47,13 @@ const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS;
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
-let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual',0)===1;
+let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1;
 const HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
 const cv=$('c'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
 const g=cv.getContext('2d',FAST?{alpha:false,desynchronized:true,willReadFrequently:false}:{alpha:false,willReadFrequently:false});
-const RES_KEY='fracture-board-res';
+const RES_KEY='fracture-board-res3';
 let simLong=(()=>{
   if(QP.has('res')){try{localStorage.removeItem(RES_KEY);}catch(_){}return Math.round(qn('res',1920,600,3840));}
   let s=0;try{s=+localStorage.getItem(RES_KEY)||0;}catch(_){}
@@ -1113,21 +1113,64 @@ function qualityCheck(now){
   if(now-slowSince<1.5)return;
   slowSince=0;setRes(simLong>1600?1600:simLong>1280?1280:simLong>960?960:640);
 }
-let lastFrameT=0,fms=16,lastResume=0,worst=0,jsMs=0,dbgN=0,an=null,anBuf=null,outPk=0;
+let lastFrameT=0,fms=16,lastResume=0,worst=0,jsMs=0,dbgN=0;
+/* ===== sound watchdog: listens to the output twice a second and repairs it if it has gone quiet when it shouldn't be =====
+   1) values that hold the whole mix down (gate, duck, sweep filters) are snapped back to open
+   2) if that doesn't bring it back, the sound engine is rebuilt and the loop carries on in time */
+let an=null,anBuf=null,outPk=0,quietSince=0,softAt=0,wdT=0,softFix=0,hardFix=0,fixWhy='',lastRebuild=-99,notRunSince=0,gestured=false,needRebuild=false;
+function level(){
+  if(!AC||!master)return 0;
+  try{
+    if(!an||an.context!==AC){an=AC.createAnalyser();an.fftSize=512;anBuf=new Float32Array(512);master.connect(an);}
+    an.getFloatTimeDomainData(anBuf);let m=0;
+    for(let i=0;i<512;i++){const v=anBuf[i];if(v!==v||v>1e6||v<-1e6)return NaN;const a=v<0?-v:v;if(a>m)m=a;}
+    return m;
+  }catch(_){return 0;}
+}
+function softReset(){
+  const t=AC.currentTime;
+  [[gate.gain,1],[duck.gain,1],[mf.frequency,20000],[mf.Q,.7],[hf.frequency,20],[hf.Q,.7]].forEach(pv=>{try{pv[0].cancelScheduledValues(t);pv[0].setValueAtTime(pv[1],t);}catch(_){}});
+  gateBusy=0;softFix++;fixWhy='reopened';
+}
+function rebuildAudio(why){
+  const old=AC,hadLoop=loopT0!==null;let phase=0;
+  if(old&&hadLoop)phase=(((old.currentTime-loopT0)%LOOP)+LOOP)%LOOP;
+  try{if(old)old.close();}catch(_){}
+  AC=null;audioDead=false;an=null;jobs.length=0;vq.length=0;mvq.length=0;gateBusy=0;lastStut=-9;for(const k in fxLast)delete fxLast[k];
+  initAudio();if(!AC)return;
+  try{AC.resume();}catch(_){}
+  held.forEach(fr=>{fr.voice=null;fr.pressT=AC.currentTime;});
+  if(hadLoop){loopT0=AC.currentTime-phase;nextT=-10;mNext=-10;events.forEach(e=>{e.startLoop=0;});}
+  hardFix++;fixWhy=why;lastRebuild=performance.now()/1000;quietSince=0;softAt=0;notRunSince=0;
+}
+function watchdog(now){
+  const lv=level();outPk=Math.max(outPk*.6,lv===lv?lv:0);
+  if(!AC||!soundOn)return;
+  if(AC.state!=='running'){
+    if(!notRunSince)notRunSince=now;
+    if(gestured&&now-notRunSince>4)needRebuild=true;      /* stuck asleep: rebuilt on the next touch, where the browser allows it */
+    return;
+  }
+  notRunSince=0;
+  if(lv!==lv){if(now-lastRebuild>10)rebuildAudio('bad signal');return;}
+  const expect=held.size>0||(events.length>0&&loopT0!==null);
+  if(lv>.0005||!expect){quietSince=0;softAt=0;return;}
+  if(!quietSince)quietSince=now;
+  const lim=held.size?2.5:LOOP+1.5;
+  if(!softAt){if(now-quietSince>lim){softReset();softAt=now;}}
+  else if(now-softAt>lim&&now-lastRebuild>30)rebuildAudio('silent');
+}
+addEventListener('pointerup',()=>{gestured=true;if(needRebuild){needRebuild=false;try{rebuildAudio('asleep');}catch(_){}}},{capture:true,passive:true});
 const UA=((navigator.userAgent.match(/(Chrome|Firefox|Version)\/[\d.]+/)||[''])[0])+' '+((navigator.userAgent.match(/Android [\d.]+/)||[''])[0]);
 /* ===== hidden tuning panel: 5 quick taps in the bottom-left corner. everything set here is remembered on this screen ===== */
 let tuneAt=0;
 function setTune(on){tune=on;tuneAt=performance.now();document.body.classList.toggle('tune',on);}
 const RSTEPS=[480,640,800,960,1280,1600,1920,2560];
-function stepRes(d){let i=0;RSTEPS.forEach((v,j)=>{if(Math.abs(v-simLong)<Math.abs(RSTEPS[i]-simLong))i=j;});i=clamp(i+d,0,RSTEPS.length-1);manualRes=true;LSset('manual',1);setRes(RSTEPS[i]);}
+function stepRes(d){let i=0;RSTEPS.forEach((v,j)=>{if(Math.abs(v-simLong)<Math.abs(RSTEPS[i]-simLong))i=j;});i=clamp(i+d,0,RSTEPS.length-1);manualRes=true;LSset('manual3',1);setRes(RSTEPS[i]);}
 function stepLayers(d){MAXV=clamp(MAXV+d,1,24);LSset('layers',MAXV);while(events.length>MAXV)events.shift();}
 function soundTest(){
   /* rebuild the sound engine inside this tap, then play a plain beep straight to the speakers (it skips the whole effects chain) */
-  try{if(AC)AC.close();}catch(_){}
-  AC=null;audioDead=false;an=null;jobs.length=0;loopT0=null;events.length=0;vq.length=0;mvq.length=0;
-  held.forEach(fr=>{fr.voice=null;});
-  initAudio();if(!AC)return;
-  try{AC.resume();}catch(_){}
+  rebuildAudio('test');if(!AC)return;
   const o=AC.createOscillator(),a=AC.createGain(),t=AC.currentTime+.05;o.frequency.value=660;a.gain.setValueAtTime(.25,t);a.gain.setTargetAtTime(0,t+.35,.05);
   o.connect(a);a.connect(AC.destination);o.start(t);o.stop(t+.7);
 }
@@ -1150,6 +1193,7 @@ function frame(){
   qualityCheck(now);
   idleTick(now);
   if(now-worldSweep>5&&!held.size&&world.length){sweepWorld(now);}
+  if(now-wdT>.5){wdT=now;try{watchdog(now);}catch(_){}}
   if(AC){
     const ac=AC.currentTime;
     while(mvq.length&&mvq[0].t<=ac)mvq.shift();
@@ -1166,12 +1210,9 @@ function frame(){
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      let lvl=0;
-      if(AC&&master){try{if(!an||an.context!==AC){an=AC.createAnalyser();an.fftSize=512;anBuf=new Float32Array(512);master.connect(an);}an.getFloatTimeDomainData(anBuf);for(let i=0;i<512;i++){const v=Math.abs(anBuf[i]);if(v>lvl)lvl=v;}}catch(_){}}
-      outPk=Math.max(outPk*.9,lvl);
-      dbg.textContent='B3  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+      dbg.textContent='B4  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
-        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')
+        +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;
     }
   }
