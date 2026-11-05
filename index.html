@@ -1142,12 +1142,16 @@ function rest(now){
 /* staff menu: press and hold the bottom-left corner for 3 seconds (a keyboard's H key works too) */
 function cornerDown(e){
   if(!KIOSK||staff)return false;
-  const z=Math.min(innerWidth,innerHeight)*.09;
+  const z=Math.min(innerWidth,innerHeight)*.14;
   if(e.clientX>z||e.clientY<innerHeight-z)return false;
   cornerId=e.pointerId;clearTimeout(cornerT);cornerT=setTimeout(()=>{staffHold=true;setStaff(true);},3000);
+  /* second way in, for screens where a long hold gets swallowed: tap the same corner 5 times quickly */
+  const t=performance.now();cornerTaps=cornerTaps.filter(x=>t-x<3000);cornerTaps.push(t);
+  if(cornerTaps.length>=5){cornerTaps=[];clearTimeout(cornerT);staffHold=true;setStaff(true);}
   return true;
 }
 function cornerUp(e){if(e.pointerId===cornerId){cornerId=null;clearTimeout(cornerT);if(staffHold)setTimeout(()=>{staffHold=false;},500);}}
+let cornerTaps=[];
 let staffHold=false;                     /* true while the finger that opened the menu is still lifting off it */
 function setStaff(on){staff=on;document.body.classList.toggle('staff',on);setMenu(on);poke();}
 function toggleMenu(){if(staffHold)return;
@@ -2032,7 +2036,7 @@ function frame(){
     $('wInfo').textContent=songStatus();
     if(song.endT!==null&&AC&&AC.currentTime>song.endT+1.5)$('wAgain').style.display='';
   }
-  info.textContent=Math.round(1000/fms)+' FPS · RES '+simLong+' · '+BPM+' BPM · 4 BARS · LAYERS '+events.length+'/'+MAXV+' · C heal · M sound · K click · R mp4 · E jpg · 0-9 type';
+  info.textContent='V3 · '+Math.round(1000/fms)+' FPS · RES '+simLong+' · SCREEN '+innerWidth+'×'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+' · '+BPM+' BPM · 4 BARS · LAYERS '+events.length+'/'+MAXV+' · C heal · M sound · K click · R mp4 · E jpg · 0-9 type';
   }catch(e){console.warn('frame error',e);}
 }
 requestAnimationFrame(frame);

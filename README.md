@@ -8,7 +8,7 @@ The original `lampwrecked/fracture` repo and fracture.lampwrecked.art are not ch
 
 ## What is different from the live version
 
-- **No menu for the public.** The ☰ button is hidden. Staff: press and hold the **bottom-left corner for 3 seconds**
+- **No menu for the public.** The ☰ button is hidden. Staff: press and hold the **bottom-left corner for 3 seconds**, or tap that corner 5 times quickly,
   (or press **H** on a plugged-in keyboard). It closes itself after 90 seconds. The LAMPWRECKED link button is
   removed so nobody can leave the piece.
 - **Everything you touch is at the bottom.** The ☰ button, the menu row, the library's tabs and close button all sit
