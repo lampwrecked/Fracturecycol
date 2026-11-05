@@ -3,166 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>FRACTURE · WALL — Lampwrecked</title>
+<title>FRACTURE — Lampwrecked</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;image-rendering:auto;touch-action:none;cursor:crosshair}
-#hint{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:max(14px,2vmin);pointer-events:none;color:#fff;font:max(12px,1.5vmin)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.35em;text-transform:uppercase;transition:opacity 1.2s;mix-blend-mode:difference}
-#hint b{font-size:max(22px,3.4vmin);font-weight:400;letter-spacing:.7em;margin-right:-.7em}
-#hint span{opacity:.6}
-#ui,#info,#bMenu{position:fixed;z-index:5;font:11px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;transition:opacity .6s}
-#bMenu{bottom:max(10px,env(safe-area-inset-bottom));left:10px;background:rgba(0,0,0,.6);color:#d8d8d8;border:1px solid rgba(255,255,255,.3);padding:8px 12px;min-width:42px;font:18px/1 ui-monospace,Menlo,Consolas,monospace;cursor:pointer;border-radius:0}
-#bMenu.open{background:#fff;color:#000}
-#ui{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 44px);left:10px;display:flex;gap:6px;flex-wrap:wrap-reverse;max-width:calc((100vw - 20px) / var(--z,1))}
-#info{top:max(10px,env(safe-area-inset-top));left:10px;color:rgba(255,255,255,.55);pointer-events:none}
-#ui.hide{opacity:0;pointer-events:none}
-#info.hide{opacity:0}
-#ui.hide,#info.hide{visibility:hidden}
-#ui button{background:rgba(0,0,0,.6);color:#d8d8d8;border:1px solid rgba(255,255,255,.3);padding:9px 11px;font:inherit;letter-spacing:inherit;cursor:pointer;border-radius:0}
-#ui button:hover{background:#fff;color:#000}
-#ui select{background:rgba(0,0,0,.6);color:#d8d8d8;border:1px solid rgba(255,255,255,.3);padding:9px 11px;font:inherit;letter-spacing:inherit;text-transform:inherit;border-radius:0;cursor:pointer;max-width:62vw;color-scheme:dark}
-#ui select:hover,#ui select:focus{border-color:#fff;outline:none}
-#ui button.on{background:#ff2a2a;color:#fff;border-color:#ff2a2a}
-#beat{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;width:10px;height:10px;border-radius:50%;background:#fff;opacity:0;z-index:5;pointer-events:none;mix-blend-mode:difference}
-#toast{position:fixed;left:50%;top:max(34px,env(safe-area-inset-top));transform:translateX(-50%);font:11px ui-monospace,Menlo,monospace;letter-spacing:.1em;color:#fff;background:rgba(0,0,0,.7);padding:8px 12px;border:1px solid rgba(255,255,255,.3);opacity:0;transition:opacity .4s;pointer-events:none;z-index:6;white-space:nowrap}
-#watch{position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:7;display:none;gap:6px;align-items:center;font:11px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7)}
-body.watching #watch{display:flex}
-body.watching #bMenu,body.watching #ui,body.watching #info{display:none}
-#watch button,#lib button{background:rgba(0,0,0,.6);color:#d8d8d8;border:1px solid rgba(255,255,255,.3);padding:9px 11px;font:inherit;letter-spacing:inherit;cursor:pointer;border-radius:0;text-transform:uppercase}
-#watch button:hover,#lib button:hover{background:#fff;color:#000}
-#lib button:disabled{opacity:.4;pointer-events:none}
-#lib{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.92);display:flex;flex-direction:column;font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#d8d8d8;padding-top:env(safe-area-inset-top)}
-#lib.hide{display:none}
-.lbar{display:flex;gap:6px;align-items:center;padding:10px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.15)}
-.lbar [data-tab].on{background:#fff;color:#000}
-#libMode{flex:1;color:rgba(255,255,255,.45);min-width:120px}
-#lib.songs .rc,#lib.songs #strip{display:none}
-#libBody{flex:1;overflow:auto;padding:10px;-webkit-overflow-scrolling:touch}
-#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
-#more{display:block;margin:12px auto}
-.empty{grid-column:1/-1;padding:40px 0;text-align:center;color:rgba(255,255,255,.4)}
-.card{border:1px solid rgba(255,255,255,.18);background:#050505;display:flex;flex-direction:column}
-.card canvas{display:block;width:100%;height:auto}
-.card .st{border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)}
-.card .chips{padding:8px 8px 0;color:rgba(255,255,255,.6);font-size:10px;min-height:2.6em}
-.card .meta{display:flex;justify-content:space-between;gap:6px;padding:6px 8px;align-items:baseline}
-.card .meta b{font-weight:400;color:#fff}
-.card .meta span{color:rgba(255,255,255,.5);font-size:10px;text-align:right}
-.card .act{display:flex;gap:4px;padding:0 6px 6px;flex-wrap:wrap}
-#lib .card .act button{padding:7px 8px;flex:1 1 auto}
-#lib .card .act .rep{flex:0 0 auto;color:rgba(255,255,255,.45)}
-.card.reported{opacity:.35}
-.card.song{padding-top:4px}
-.card .dots{display:flex;gap:4px;flex-wrap:wrap;padding:4px 8px 10px;align-items:flex-start}
-.card .dots span{display:flex;flex-direction:column;gap:2px}
-.card .dots i{width:10px;height:10px;border-radius:50%;display:block}
-#strip{border-top:1px solid rgba(255,255,255,.2);padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#000}
-#sItems{display:flex;gap:0;overflow-x:auto;padding:10px 0 6px;min-height:110px;max-height:46vh;align-items:flex-start;-webkit-overflow-scrolling:touch}
-.sempty{color:rgba(255,255,255,.4);padding:0 4px}
-.scard{display:flex;align-items:center;flex:0 0 auto}
-.scol{position:relative;width:128px;border:1px solid rgba(255,255,255,.3);background:#000;display:flex;flex-direction:column;cursor:pointer}
-.scol.sel{border-color:#fff;box-shadow:0 0 0 1px #fff}
-.shead{display:flex;align-items:center;gap:2px;height:22px;border-bottom:1px solid rgba(255,255,255,.2)}
-#lib .shead button{padding:3px 6px;border:0;background:transparent;font-size:10px}
-#lib .shead .srep{margin-left:auto;background:#fff;color:#000}
-.scnt{font-size:9px;color:rgba(255,255,255,.5);padding:0 3px}
-.smini{position:relative;border-top:1px solid rgba(255,255,255,.12)}
-.smini canvas{display:block;width:128px;height:auto}
-#lib .svol{position:absolute;right:0;bottom:0;padding:3px 5px;border:0;background:rgba(0,0,0,.7);font-size:9px;letter-spacing:0}
-.scard.stack .scol{box-shadow:4px -4px 0 -1px #000,4px -4px 0 0 rgba(255,255,255,.35),8px -8px 0 -1px #000,8px -8px 0 0 rgba(255,255,255,.2)}
-.sl{position:absolute;left:4px;bottom:4px;font-size:10px;color:#fff;text-shadow:0 0 3px #000}
-#lib .sx{position:absolute;right:0;top:0;padding:4px 7px;border:0;background:rgba(0,0,0,.6)}
-#lib .str{margin:0 6px;padding:6px 7px;font-size:10px;color:rgba(255,255,255,.55);border-style:dashed}
-#lib .str.on{color:#fff;border-color:#ff2a2a;border-style:solid}
-#lib .str:hover,#lib .str.on:hover{background:#fff;color:#000}
-.sctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-#sLen{flex:1;color:rgba(255,255,255,.5)}
-/* ===== WALL build: sized for an 86" 4K touch board ===== */
-#bMenu,#ui,#info,#toast,#watch,#lib{zoom:var(--z,1)}             /* menus scale up with the screen */
-body.kiosk #c{cursor:none}
-body.kiosk #bMenu,body.kiosk #bLw{display:none}                  /* no menu for the public; staff: hold the bottom-left corner 3 s */
-body.kiosk.staff #bMenu,body.kiosk.showmenu #bMenu{display:block}
-/* everything you touch sits at the bottom: the top of an 86" wall screen is out of reach */
-#lib{padding-top:0}
-#libBody{order:1;display:flex;flex-direction:column}
-#grid{margin-top:auto}
-#more{align-self:center;flex:0 0 auto}
-#strip{order:2;padding-bottom:8px}
-.lbar{order:3;border-bottom:0;border-top:1px solid rgba(255,255,255,.15);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-body.rest #hint span{animation:breathe 3.6s ease-in-out infinite}
-@keyframes breathe{0%,100%{opacity:.25}50%{opacity:.85}}
+#c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:none}
+/* nothing is ever written on screen. this readout only exists when the address ends in ?debug=1 */
+#dbg{position:fixed;left:12px;top:10px;font:15px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#9f9;background:rgba(0,0,0,.65);padding:5px 8px;pointer-events:none;display:none;white-space:pre}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint"><b>FRACTURE</b><span>press · hold · touch</span></div>
-<button id="bMenu" aria-expanded="false" aria-label="Menu">☰</button>
-<div id="ui" class="hide">
-  <select id="selType" aria-label="Fracture type"></select>
-  <button id="bSnd">SOUND ON</button>
-  <button id="bClk">CLICK OFF</button>
-  <button id="bRec">⬇ MP4 REC</button>
-  <button id="bJpg">JPG 4K</button>
-  <button id="bSvg">SVG</button>
-  <button id="bClr">HEAL</button>
-  <button id="bSave">SAVE</button>
-  <button id="bLib">LIBRARY</button>
-  <button id="bLw">LAMPWRECKED</button>
-</div>
-<div id="beat"></div>
-<div id="info" class="hide"></div>
-<div id="toast"></div>
-<div id="watch"><span id="wInfo"></span><button id="wAgain">↻ AGAIN</button><button id="wStop">■ EXIT</button></div>
-<div id="lib" class="hide">
-  <div class="lbar">
-    <button data-tab="recipes" class="on">LIBRARY</button><button data-tab="songs">SONGS</button>
-    <span id="libMode"></span>
-    <button id="libEndless">∞ ENDLESS</button>
-    <button id="libRand" class="rc">🎲 RANDOM TO CANVAS</button>
-    <button id="libClose">✕</button>
-  </div>
-  <div id="libBody"><div id="grid"></div><button id="more">MORE</button></div>
-  <div id="strip">
-    <div id="sItems"></div>
-    <div class="sctl"><span id="sLen"></span><button id="sRand">🎲 RANDOM</button><button id="sPlay">▶ PLAY</button><button id="sSave">SAVE SONG</button><button id="sClr">CLEAR</button></div>
-  </div>
-</div>
+<div id="dbg"></div>
 <script>
 (()=>{
 'use strict';
-/* ===== constants ===== */
-const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS,
-  MAXV=Math.min(24,Math.max(1,parseInt(new URLSearchParams(location.search).get('layers'),10)||12));   /* WALL: 12 looping layers by default (the live piece uses 24); ?layers=24 to raise */
-const $=id=>document.getElementById(id);
-const cv=$('c');
-const g=cv.getContext('2d',{willReadFrequently:true,alpha:false});
-/* ===== WALL settings (all can be changed from the address bar, e.g. ?idle=120&ghost=0) =====
-   kiosk=0   normal behaviour: ☰ always showing, no dissolve, no ghosts (default: ☰ hidden, hold the bottom-left corner 3 s)
-   menu=1    keep the wall behaviour but leave the ☰ button showing for everyone
-   idle=75   seconds with no touch before the piece starts dissolving back to black
-   ghost=20  seconds between the silent "ghost" cracks shown while nobody is touching (0 = off)
-   res=1920  canvas detail on the long edge (drops by itself if the screen's computer is too slow, and remembers)
-   fs=0      don't go fullscreen on the first touch
-   hands=8   how many fingers can hold a fracture at the same time
-   layers=12 how many looping layers the piece keeps (1-24); fewer = lighter on the screen's computer */
+/* =====================================================================================================
+   FRACTURE · BOARD build, for the LG 86TR3DK-B running the piece on its own built-in computer.
+   - the picture is drawn by the graphics chip: this file never reads pixels back from the canvas
+     (the live piece does, constantly, which is what made the board crawl)
+   - no words, no menu, no library, no songs, no export, no screen shake
+   - one interactive loop of up to 12 layers at 174 BPM
+   - a touch draws its first stretch of crack inside the touch event itself, before any sound work
+   Settings, added to the end of the address (join with &):
+     ?layers=12  looping layers kept (1-24)
+     ?hands=8    fingers that can hold at once
+     ?idle=75    seconds with no touch before the piece dissolves back to black
+     ?ghost=20   seconds between silent ghost cracks while resting (0 = off)
+     ?fade=1     how fast light fades (2 = twice as fast, 0.5 = half)
+     ?res=1920   canvas detail on the long edge (steps down by itself if too slow, and remembers)
+     ?fs=0       don't go fullscreen on first touch
+     ?fast=1     experimental low-latency canvas (try it; remove it if the picture flickers)
+     ?meter=0    turn off the brightness meter (try if it stutters about 3 times a second)
+     ?debug=1    show a small speed readout in the top-left corner
+   ===================================================================================================== */
+const TAU=Math.PI*2, BPM=174, STEPS=64, STEP=60/BPM/4, LOOP=STEP*STEPS;
 const QP=new URLSearchParams(location.search);
 const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
-const KIOSK=QP.get('kiosk')!=='0',FS=QP.get('fs')!=='0';
-const IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),HANDS=qn('hands',8,1,40);
-const RES_KEY='fracture-wall-res2';
+const MAXV=Math.round(qn('layers',12,1,24)),HANDS=qn('hands',8,1,40),IDLE=qn('idle',75,5,36000),GHOST=qn('ghost',20,0,3600),FADE=qn('fade',1,.2,6);
+const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1',METER=QP.get('meter')!=='0';
+const $=id=>document.getElementById(id);
+const cv=$('c'),dbg=$('dbg');if(DEBUG)dbg.style.display='block';
+const g=cv.getContext('2d',FAST?{alpha:false,desynchronized:true,willReadFrequently:false}:{alpha:false,willReadFrequently:false});
+const RES_KEY='fracture-board-res';
 let simLong=(()=>{
   if(QP.has('res')){try{localStorage.removeItem(RES_KEY);}catch(_){}return Math.round(qn('res',1920,600,3840));}
   let s=0;try{s=+localStorage.getItem(RES_KEY)||0;}catch(_){}
-  return s>=900&&s<=1920?s:1920;
+  return s>=960&&s<=1920?s:1920;
 })(),K=simLong/1600;
-if(KIOSK)document.body.classList.add('kiosk');
-if(QP.get('menu')==='1')document.body.classList.add('showmenu');
-let Z=1;                                 /* menu + shake scale: 1 on a laptop, bigger on the wall */
-function fitUI(){Z=Math.max(1,Math.min(innerWidth,innerHeight)/900);document.documentElement.style.setProperty('--z',Z.toFixed(3));}
-fitUI();addEventListener('resize',fitUI);
 let simW=0,simH=0;
 let rnd=Math.random;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -183,10 +72,10 @@ cv.width=simW;cv.height=simH;
 g.fillStyle='#000';g.fillRect(0,0,simW,simH);g.imageSmoothingEnabled=false;
 /* every effect that moves pixels around reads from this frame-start snapshot. drawing a canvas onto ITSELF makes the
    browser copy the entire canvas on every single call (dozens per frame = the lag), a separate source canvas does not. */
-const SNc=document.createElement('canvas'),sn=SNc.getContext('2d',{alpha:false});
+const SNc=document.createElement('canvas'),sn=SNc.getContext('2d',{alpha:false});sn.imageSmoothingEnabled=false;
 function syncSnap(){if(SNc.width!==simW||SNc.height!==simH){SNc.width=simW;SNc.height=simH;}sn.drawImage(cv,0,0);snapDirty=false;}
 let snapDirty=true;
-/* WALL: the snapshot is only taken on frames where an effect actually reads it (it is a full-canvas copy) */
+/* the snapshot is only taken on frames where an effect actually uses it (a copy done by the graphics chip) */
 function SN(){if(snapDirty)syncSnap();return SNc;}
 syncSnap();
 function resize(){
@@ -440,42 +329,44 @@ GL.echo=(f,r,k)=>{
   g.translate(f.x,f.y);g.rotate((rnd()-.5)*.05*k);const s=1.015+.05*k;g.scale(s,s);g.translate(-f.x,-f.y);
   g.drawImage(SN(),0,0);g.restore();
 };
-GL.rgb=(f,r,k)=>{
-  const R=pickRegion(f,r,1,Math.round(520*K)),img=g.getImageData(R.x,R.y,R.w,R.h),d=img.data,src=new Uint8ClampedArray(d),w=R.w,h=R.h;
+/* ---- the four glitches below used to read and rewrite pixels one by one on the main processor.
+   on the board they are rebuilt from drawing operations the graphics chip can do: same idea, slightly different texture ---- */
+const SCR=document.createElement('canvas');SCR.width=SCR.height=640;
+const sg=SCR.getContext('2d');sg.imageSmoothingEnabled=false;
+const NZ=document.createElement('canvas');NZ.width=NZ.height=256;      /* a tile of coarse grey noise, made once */
+{const c=NZ.getContext('2d'),im=c.createImageData(256,256),d=im.data;let v=0;
+ for(let i=0;i<d.length;i+=4){if(((i>>2)&1)===0)v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}c.putImageData(im,0,0);}
+GL.rgb=(f,r,k)=>{              /* colour split: red slides one way, blue the other, green stays */
+  const R=pickRegion(f,r,1,Math.min(620,Math.round(520*K))),w=R.w,h=R.h,S=SN();
   const dx=Math.round((3+22*k)*K*(rnd()<.5?-1:1)),dy=Math.round((rnd()-.5)*10*k*K);
-  for(let y=0;y<h;y++){
-    const yy=clamp(y+dy,0,h-1);
-    for(let x=0;x<w;x++){
-      const i=(y*w+x)*4;
-      d[i]=src[(y*w+clamp(x-dx,0,w-1))*4];
-      d[i+2]=src[(yy*w+clamp(x+dx,0,w-1))*4+2];
-    }
-  }
-  g.putImageData(img,R.x,R.y);
+  const chan=(col,ox,oy)=>{
+    sg.globalCompositeOperation='source-over';sg.fillStyle='#000';sg.fillRect(0,0,w,h);sg.drawImage(S,R.x,R.y,w,h,ox,oy,w,h);
+    sg.globalCompositeOperation='multiply';sg.fillStyle=col;sg.fillRect(0,0,w,h);sg.globalCompositeOperation='source-over';
+    g.drawImage(SCR,0,0,w,h,R.x,R.y,w,h);
+  };
+  g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(R.x,R.y,w,h);
+  g.globalCompositeOperation='lighter';
+  chan('#0f0',0,0);chan('#f00',dx,0);chan('#00f',-dx,-dy);
 };
-GL.post=(f,r,k)=>{
-  const R=pickRegion(f,r,1,Math.round(520*K)),img=g.getImageData(R.x,R.y,R.w,R.h),d=img.data;
-  const step=Math.round(24+rnd()*100),sw=(rnd()*3)|0,boost=1+k*.25;
-  for(let i=0;i<d.length;i+=4){
-    let a=((d[i]/step|0)*step)*boost,b=((d[i+1]/step|0)*step)*boost,c=((d[i+2]/step|0)*step)*boost;
-    if(sw===0){d[i]=b;d[i+1]=c;d[i+2]=a;}else if(sw===1){d[i]=c;d[i+1]=a;d[i+2]=b;}else{d[i]=a;d[i+1]=b;d[i+2]=c;}
-  }
-  g.putImageData(img,R.x,R.y);
+GL.post=(f,r,k)=>{             /* acid: colours rotate and harden */
+  const R=pickRegion(f,r,1,Math.min(620,Math.round(520*K))),sw=(rnd()*3)|0,con=1.5+rnd()*1.6,boost=1+k*.25;
+  g.save();g.globalCompositeOperation='source-over';
+  if('filter' in g)g.filter=(sw===0?'hue-rotate(240deg) ':sw===1?'hue-rotate(120deg) ':'')+'contrast('+con.toFixed(2)+') brightness('+boost.toFixed(2)+')';
+  else{g.globalCompositeOperation='lighter';g.globalAlpha=.5;}
+  g.drawImage(SN(),R.x,R.y,R.w,R.h,R.x,R.y,R.w,R.h);g.restore();
 };
-GL.sort=(f,r,k)=>{
-  const R=pickRegion(f,r,.9,Math.round(420*K)),img=g.getImageData(R.x,R.y,R.w,R.h),d32=new Uint32Array(img.data.buffer);
-  const thr=40+rnd()*120,desc=rnd()<.5,maxRun=Math.floor(R.w*(.2+.8*k));
-  const lum=p=>(p&255)+((p>>8)&255)+((p>>16)&255);
-  for(let y=0;y<R.h;y+=1+((rnd()*2)|0)){
-    const row=y*R.w;let x=0;
-    while(x<R.w){
-      while(x<R.w&&lum(d32[row+x])<thr)x++;
-      const s=x;
-      while(x<R.w&&lum(d32[row+x])>=thr&&x-s<maxRun)x++;
-      if(x-s>2)sortRun(d32,row+s,x-s,desc);
+GL.sort=(f,r,k)=>{             /* pixel-sort look: bright pixels pulled into long horizontal streaks */
+  const R=pickRegion(f,r,.9,Math.round(420*K)),S=SN(),maxRun=Math.max(12,Math.floor(R.w*(.2+.8*k)));
+  g.globalCompositeOperation='lighten';g.imageSmoothingEnabled=true;
+  for(let y=0;y<R.h;){
+    const th=1+((rnd()*3)|0);
+    if(rnd()<.62){
+      const run=Math.max(8,Math.round(maxRun*(.3+.7*rnd()))),x=R.x+Math.round(rnd()*Math.max(0,R.w-run)),sx=clamp(x+Math.round(rnd()*run),0,simW-3);
+      g.drawImage(S,sx,R.y+y,3,th,x,R.y+y,run,th);
     }
+    y+=th+((rnd()*2)|0);
   }
-  g.putImageData(img,R.x,R.y);
+  g.imageSmoothingEnabled=false;
 };
 GL.shard=(f,r,k)=>{
   if(!f.ci)return;
@@ -489,8 +380,6 @@ GL.shard=(f,r,k)=>{
   }
 };
 /* ---- new glitches: repetition, industrial static, scanlines, dance pump, mosaic crush ---- */
-const SCR=document.createElement('canvas');SCR.width=SCR.height=640;
-const sg=SCR.getContext('2d');sg.imageSmoothingEnabled=false;
 GL.repeat=(f,r,k)=>{            /* a slice of the crack stamped again and again along a line */
   const w=Math.min(600,Math.round((70+rnd()*(100+240*k))*K)),h=Math.min(600,Math.round((50+rnd()*(60+160*k))*K));
   const sx=clamp(Math.round(f.x-w/2),0,simW-w),sy=clamp(Math.round(f.y-h/2),0,simH-h);
@@ -503,14 +392,14 @@ GL.repeat=(f,r,k)=>{            /* a slice of the crack stamped again and again 
   g.globalAlpha=1;g.globalCompositeOperation='source-over';
 };
 GL.static=(f,r,k)=>{           /* coarse tinted TV static patch */
-  const R=pickRegion(f,r,.8,Math.round(300*K)),img=g.getImageData(R.x,R.y,R.w,R.h),d=img.data;
-  const amt=.15+.3*k,hr=f.hue*TAU/360,mr=.55+.45*Math.cos(hr),mg=.55+.45*Math.cos(hr-2.094),mb=.55+.45*Math.cos(hr-4.189);
-  let nz=0;
-  for(let i=0;i<d.length;i+=4){
-    if(((i>>2)&1)===0)nz=rnd()*255*amt;
-    d[i]+=nz*mr;d[i+1]+=nz*mg;d[i+2]+=nz*mb;
-  }
-  g.putImageData(img,R.x,R.y);
+  const R=pickRegion(f,r,.8,Math.round(300*K)),w=R.w,h=R.h;
+  const amt=.15+.3*k,hr=f.hue*TAU/360,c=v=>Math.round(255*clamp(v,0,1));
+  const col='rgb('+c(.55+.45*Math.cos(hr))+','+c(.55+.45*Math.cos(hr-2.094))+','+c(.55+.45*Math.cos(hr-4.189))+')';
+  const ox=(rnd()*256)|0,oy=(rnd()*256)|0;
+  sg.globalCompositeOperation='source-over';
+  for(let y=-oy;y<h;y+=256)for(let x=-ox;x<w;x+=256)sg.drawImage(NZ,x,y);
+  sg.globalCompositeOperation='multiply';sg.fillStyle=col;sg.fillRect(0,0,w,h);sg.globalCompositeOperation='source-over';
+  g.globalCompositeOperation='lighter';g.globalAlpha=amt;g.drawImage(SCR,0,0,w,h,R.x,R.y,w,h);g.globalAlpha=1;
 };
 GL.scan=(f,r,k)=>{             /* CRT scanlines: rows shear sideways, dark gaps between */
   const w=Math.min(simW,Math.round((260+rnd()*(300+500*k))*K)),h=Math.round((60+rnd()*(100+200*k))*K);
@@ -570,7 +459,7 @@ function flash(f,r,k){
 }
 
 /* ===== audio ===== */
-let AC=null,bus,dlyIn,vrbIn,gate,master,recDest,noiseBuf,soundOn=true;
+let AC=null,bus,dlyIn,vrbIn,gate,master,noiseBuf,soundOn=true,curLayer=null;
 let mf,hf,crushWet,ringWet,ringOsc,combDly,combWet,dlySend,fb2,swellSend,repSend,repDly,fbR,noiseWet,duck;const fxLast={};
 const sp=(prm,v,t,tc=.05)=>prm.setTargetAtTime(v,t,tc);
 const BH=BPM/60;                         /* beats per second */
@@ -611,7 +500,6 @@ function initAudioInner(){
   const post=AC.createGain();post.gain.value=.55;
   const comp=AC.createDynamicsCompressor();comp.threshold.value=-20;comp.knee.value=10;comp.ratio.value=8;comp.attack.value=.002;comp.release.value=.12;
   gate=AC.createGain();master=AC.createGain();master.gain.value=soundOn?.9:0;
-  recDest=AC.createMediaStreamDestination();
   bus.connect(pre);pre.connect(shp);shp.connect(post);post.connect(comp);/* fracture FX rack: serial sweep filters + parallel wet effects the glitches trigger */
   mf=bq('lowpass',20000,.7);hf=bq('highpass',20,.7);
   const fxSum=gn(1),lim=AC.createDynamicsCompressor();lim.threshold.value=-8;lim.knee.value=6;lim.ratio.value=14;lim.attack.value=.002;lim.release.value=.1;
@@ -633,7 +521,7 @@ function initAudioInner(){
   const nsrc=noiseSrc(AC.currentTime),nbp=bq('bandpass',1800,1.2);noiseWet=gn(0);
   nsrc.connect(nbp);nbp.connect(noiseWet);noiseWet.connect(fxSum);
   duck=gn(1);
-  fxSum.connect(duck);duck.connect(lim);lim.connect(gate);gate.connect(master);master.connect(AC.destination);gate.connect(recDest);
+  fxSum.connect(duck);duck.connect(lim);lim.connect(gate);gate.connect(master);master.connect(AC.destination);
   dlyIn=AC.createGain();
   const dly=AC.createDelay(2);dly.delayTime.value=60/BPM*.75;
   const fb=AC.createGain();fb.gain.value=.42;
@@ -863,7 +751,6 @@ const FAM={kick:[0,100],snare:[12,100],hat:[26,100],anvil:[38,100],
   acid:[318,100],thud:[300,100],growl:[284,100],grind:[268,100],
   lead:[188,100],siren:[170,100],riser:[150,100],clang:[128,100],
   glass:[200,30],noise:[215,18]};
-const SWATCH={kick:'🟥',snare:'🟥',hat:'🟧',anvil:'🟧',acid:'🟪',thud:'🟪',growl:'🟪',grind:'🟪',lead:'🟦',siren:'🟦',riser:'🟩',clang:'🟩',glass:'⬜',noise:'⬜'};
 const famHue=k=>{const b=(FAM[k]||[0])[0];return((b+((rnd()*12-6)|0))%360+360)%360;};
 const famSat=k=>(FAM[k]||[0,100])[1];
 function pitchFrom(y01){
@@ -937,7 +824,7 @@ function sched(){
       }
     }
     nextT+=STEP;
-    if(++nextStep>=STEPS){nextStep=0;loopNo++;if(song)songLoop(nextT);}
+    if(++nextStep>=STEPS){nextStep=0;loopNo++;}
   }
   runJobs(now);
 }
@@ -953,7 +840,7 @@ function recordEvent(f,hold){
 }
 
 /* ===== fractures ===== */
-let frs=[],shake=0,budget=3;
+let frs=[],budget=3;
 const held=new Map();
 /* every effect a fracture makes is stored as an op (type, place, size, own rng seed),
    so each loop replay re-runs the exact same effects the fracture had when it was made */
@@ -1007,7 +894,7 @@ class Fr{
       while(this.oi<O.length&&O[this.oi].t<=te)replayOp(this,O[this.oi++]);
       if(te>=this.hold){
         while(this.oi<O.length)replayOp(this,O[this.oi++]);
-        this.done=true;this.released=true;if(!this.ghost)shake+=6+16*growth(this.hold);
+        this.done=true;this.released=true;
       }
       return;
     }
@@ -1019,7 +906,6 @@ class Fr{
       if(this.voice&&now-this.lastUpd>STEP*.5){this.lastUpd=now;this.voice.upd(p,AC.currentTime+.03);}
       while(this.ri<this.rings.length&&r/this.maxR>=this.rings[this.ri]){tickSnd(AC.currentTime+.003,this.ri%9);this.ri++;}
     }
-    if(p>.2)shake=Math.max(shake,p*6);
     let fire;
     if(AC&&loopT0!==null){const si=Math.floor((AC.currentTime-loopT0)/STEP);fire=si!==this.lastSi&&si%(p<.35?2:1)===0;if(fire&&budget>0)this.lastSi=si;}
     else fire=now-this.lastTick>Math.max(.07,.17-.09*p);
@@ -1034,7 +920,7 @@ class Fr{
     if(this.released)return;
     this.released=true;this.done=true;
     const th=performance.now()/1000-this.t0,p=growth(th);
-    this.p=p;burst(this,p,th);shake+=6+16*p;
+    this.p=p;burst(this,p,th);
     if(AC){
       const t=AC.currentTime;
       if(this.voice)this.voice.end(t,p);
@@ -1061,101 +947,89 @@ function spawnReplay(ev){
   frs.push(new Fr({x:ev.x*simW,y:ev.y*simH,seed:ev.seed,hue:ev.hue,sat:famSat(ev.inst),inst:ev.inst,live:false,dur:ev.dur,hold:ev.hold,f:ev.f,pressT:0,geo,ops:ev.ops,uid:ev.uid}));
 }
 
-/* ===== fade (also keeps the piece from whiting out) ===== */
-let fadeSh=7,fcount=0,lumAvg=0,fadeN=0;
-function trailEvery(){return 1;}   /* recording captures the live canvas exactly as it looks */
-/* WALL: the fade used to read + rewrite the WHOLE canvas every 4th frame (one big hitch each time on a slow chip).
-   now it does one horizontal quarter per frame, skips black pixels 4 bytes at a time, and skips bands that are all black.
-   the decay maths per pixel is unchanged, so the look is the same. */
-const FT=[4,5,6,7].map(sh=>{const t=new Uint8Array(256);for(let a=0;a<256;a++){const v=a-1-(a>>sh);t[a]=v<0?0:v;}return t;});
-const FB=4;let fadeBand=0,fSum=0,fCnt=0,fDecay=true;
+/* ===== fade, done by the graphics chip =====
+   two full-screen fills, about 15 times a second:
+   1) a faint black wash takes a fraction off everything (stronger when more layers are playing, so it never whites out)
+   2) a 'difference' fill with the darkest possible grey takes 1 off every colour value, so trails really reach black
+      (pure black flickers between 0 and 1 out of 255, which no screen shows) */
+let fadeAcc=0,lumAvg=0,whiteFrac=0,lumT=0;
+/* brightness meter: the graphics chip shrinks the picture to a thumbnail and only that thumbnail is read back
+   (about 3 times a second). it tells the fade how hard to work so the piece never whites out. ?meter=0 turns it off. */
+const MW=384,MH=216,Mc=document.createElement('canvas');Mc.width=MW;Mc.height=MH;
+const mg=Mc.getContext('2d',{alpha:false,willReadFrequently:false});
+function measure(){
+  mg.drawImage(cv,0,0,MW,MH);
+  const d=mg.getImageData(0,0,MW,MH).data;let s=0,w=0,n=0;
+  for(let i=0;i<d.length;i+=16){const a=d[i],b=d[i+1],c=d[i+2];s+=a+b+c;if((a<b?(a<c?a:c):(b<c?b:c))>150)w++;n++;}
+  lumAvg=s/(3*n);whiteFrac=w/n;
+}
 function fadePass(){
-  if(fadeBand===0){const ev=trailEvery();fDecay=ev>0&&(fadeN++%ev)===0;fSum=0;fCnt=0;}
-  const y0=Math.floor(simH*fadeBand/FB),y1=Math.floor(simH*(fadeBand+1)/FB);
-  const img=g.getImageData(0,y0,simW,y1-y0),d=img.data,p=new Uint32Array(d.buffer),n=p.length,sh=fadeSh,W=96,gain=lumAvg>62?.86:lumAvg>46?.94:1,decay=fDecay;
-  let sum=0,dirty=false;
-  const T=FT[sh-4];
-  for(let j=0;j<n;j++){
-    const v=p[j];if(!(v&0xffffff))continue;
-    let a=v&255,b=(v>>>8)&255,c=(v>>>16)&255;
-    const m=a<b?(a<c?a:c):(b<c?b:c);
-    if(m>W){const w=(m-W)>>1;a-=w;b-=w;c-=w;}          /* pull white back toward colour */
-    if(gain<1){a=(a*gain)|0;b=(b*gain)|0;c=(c*gain)|0;}  /* whole-frame brightness governor */
-    if(decay){a=T[a];b=T[b];c=T[c];}                    /* same as a-=1+(a>>sh), from a table */
-    p[j]=0xff000000|(c<<16)|(b<<8)|a;dirty=true;
-    if((j&63)===0)sum+=(a+b+c)/3;
-  }
-  if(dirty)g.putImageData(img,0,y0);
-  fSum+=sum;fCnt+=(n+63)>>6;
-  if(++fadeBand>=FB){fadeBand=0;lumAvg=fCnt?fSum/fCnt:0;fadeSh=lumAvg>50?4:lumAvg>34?5:lumAvg>20?6:7;}
+  let a;
+  if(METER){
+    a=lumAvg>50?1/16:lumAvg>34?1/32:lumAvg>20?1/64:1/128;      /* same steps the live piece uses */
+    if(lumAvg>62)a+=.14;else if(lumAvg>46)a+=.06;              /* whole-frame brightness governor */
+    a+=Math.min(.12,whiteFrac*.7);                              /* pull whited-out areas back */
+  }else{const n=events.length+held.size;a=n>9?1/10:n>6?1/16:n>3?1/28:1/56;}
+  a*=FADE;
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='rgba(0,0,0,'+Math.min(.6,a).toFixed(4)+')';g.fillRect(0,0,simW,simH);
+  g.globalCompositeOperation='difference';g.fillStyle='#010101';g.fillRect(0,0,simW,simH);
+  g.globalCompositeOperation='source-over';
 }
 
-
-/* ===== input ===== */
-const hint=$('hint'),ui=$('ui'),info=$('info');
+/* ===== input: the picture comes first ===== */
+let pressMs=0;
 function begin(e){
-  try{initAudio();}catch(err){console.warn(err);}
-  if(held.size>=HANDS)return;             /* a crowd (or a sleeve on the IR frame) can't pile up endless voices */
-  wake();
+  if(held.size>=HANDS)return;             /* a crowd (or a sleeve on the touch frame) can't pile up endless voices */
+  const t0=performance.now();
+  resting=false;
   const x=clamp(e.clientX/innerWidth*simW,0,simW-1),y=clamp(e.clientY/innerHeight*simH,0,simH-1);
   let t=0;
   if(AC){
-    if(AC.state!=='running')AC.resume();
+    if(AC.state!=='running'){try{AC.resume();}catch(_){}}
     t=AC.currentTime;
     if(loopT0===null){loopT0=t;nextT=t;nextStep=0;loopNo=0;mNext=t;mBeat=0;mvq.length=0;}
   }
-  const pick=sel.value,fixed=pick!=='random'&&!!V[pick],inst=fixed?pick:pickInst(),f=pitchFrom(y/simH);let voice=null;
-  try{if(AC)voice=V[inst](t+.003,f);}catch(err){console.warn(err);}
-  const fr=new Fr({uid:++uidN,x,y,seed:(rnd()*1e9)|0,hue:famHue(inst),sat:famSat(inst),inst,fixed,live:true,f,voice,pressT:t});
+  const inst=pickInst(),f=pitchFrom(y/simH);
+  const fr=new Fr({uid:++uidN,x,y,seed:(rnd()*1e9)|0,hue:famHue(inst),sat:famSat(inst),inst,live:true,f,voice:null,pressT:t});
   held.set(e.pointerId,fr);frs.push(fr);
+  try{reveal(fr,rad(0,fr.maxR));}catch(err){console.warn(err);}   /* draw the first stretch of crack right now, inside the touch event; effects follow on the next frame */
+  pressMs=Math.max(pressMs*.9,performance.now()-t0);
+  /* the sound is built straight after, in its own turn, so it can never delay the line */
+  setTimeout(()=>{
+    try{
+      initAudio();if(!AC)return;
+      const v=V[inst](Math.max(t+.003,AC.currentTime),f);
+      if(fr.released)v.end(AC.currentTime+.02,fr.p||.05);else fr.voice=v;
+    }catch(err){console.warn(err);}
+  },0);
 }
-function end(e){poke();cornerUp(e);const fr=held.get(e.pointerId);if(fr){held.delete(e.pointerId);fr.release();}}
-cv.addEventListener('pointerdown',e=>{e.preventDefault();poke();if(cornerDown(e))return;if(song)return;if(pendingEndless){pendingEndless=false;startEndless();return;}if(pendingSong){playPending();return;}begin(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+function end(e){poke();const fr=held.get(e.pointerId);if(fr){held.delete(e.pointerId);fr.release();}}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();poke();begin(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
 cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-cv.addEventListener('contextmenu',e=>e.preventDefault());
 /* the board must never zoom, scroll, or pop a browser menu when the public touches it */
-document.addEventListener('touchmove',e=>{if(!libOpen)e.preventDefault();},{passive:false});
-['gesturestart','gesturechange','dblclick'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+['gesturestart','gesturechange','dblclick','contextmenu','selectstart','dragstart'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault();},{passive:false});
-if(KIOSK)document.addEventListener('contextmenu',e=>e.preventDefault());
 
-/* ===== WALL: keep the screen awake + fullscreen, staff corner, idle dissolve, resting ghosts ===== */
+/* ===== keep the screen awake + fullscreen, idle dissolve, resting ghosts ===== */
 let wl=null;
 function keepAwake(){
   try{if(navigator.wakeLock&&!wl&&!document.hidden)navigator.wakeLock.request('screen').then(l=>{wl=l;l.addEventListener('release',()=>{wl=null;});}).catch(()=>{});}catch(_){}
 }
 addEventListener('pointerup',()=>{
   keepAwake();
-  if(KIOSK&&FS&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
+  if(FS&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
     try{const p=document.documentElement.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{});}catch(_){}
   }
 },{capture:true,passive:true});
 document.addEventListener('visibilitychange',keepAwake);
-let lastTouch=performance.now()/1000,lastDrop=0,resting=true,nextGhost=lastTouch+6,staff=false,cornerId=null,cornerT=0;
-document.body.classList.add('rest');
+let lastTouch=performance.now()/1000,lastDrop=0,lastActive=0,resting=true,nextGhost=lastTouch+6;
 function poke(){lastTouch=performance.now()/1000;}
-function wake(){resting=false;document.body.classList.remove('rest');hint.style.opacity=0;}
 function rest(now){
-  resting=true;document.body.classList.add('rest');hint.style.opacity=1;
-  loopT0=null;vq.length=0;mvq.length=0;clearWorld();nextGhost=now+4+rnd()*6;
+  resting=true;loopT0=null;vq.length=0;mvq.length=0;clearWorld();
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,simW,simH);
+  nextGhost=now+4+rnd()*6;
 }
-/* staff menu: press and hold the bottom-left corner for 3 seconds (a keyboard's H key works too) */
-function cornerDown(e){
-  if(!KIOSK||staff)return false;
-  const z=Math.min(innerWidth,innerHeight)*.14;
-  if(e.clientX>z||e.clientY<innerHeight-z)return false;
-  cornerId=e.pointerId;clearTimeout(cornerT);cornerT=setTimeout(()=>{staffHold=true;setStaff(true);},3000);
-  /* second way in, for screens where a long hold gets swallowed: tap the same corner 5 times quickly */
-  const t=performance.now();cornerTaps=cornerTaps.filter(x=>t-x<3000);cornerTaps.push(t);
-  if(cornerTaps.length>=5){cornerTaps=[];clearTimeout(cornerT);staffHold=true;setStaff(true);}
-  return true;
-}
-function cornerUp(e){if(e.pointerId===cornerId){cornerId=null;clearTimeout(cornerT);if(staffHold)setTimeout(()=>{staffHold=false;},500);}}
-let cornerTaps=[];
-let staffHold=false;                     /* true while the finger that opened the menu is still lifting off it */
-function setStaff(on){staff=on;document.body.classList.toggle('staff',on);setMenu(on);poke();}
-function toggleMenu(){if(staffHold)return;
-  const open=ui.classList.contains('hide');if(KIOSK)setStaff(open);else setMenu(open);}
 /* a silent crack that grows and fades by itself while the wall is resting, so the screen is never just dead black */
 function ghost(now){
   const inst=INST[(rnd()*INST.length)|0],pool=PRIMARY[inst],hold=STEP*8*(1+((rnd()*3)|0)),ops=[];
@@ -1166,881 +1040,76 @@ function ghost(now){
 function idleTick(now){
   /* something leaning on the screen (a bag, a sleeve): let go of any touch held longer than 20 s */
   if(held.size)held.forEach((fr,id)=>{if(now-fr.t0>20){held.delete(id);fr.release();}});
-  if(song&&resting)wake();
-  if(!KIOSK||song||exp||libOpen)return;
-  const idle=now-lastTouch;
-  if(staff&&idle>90)setStaff(false);
+  if(held.size||events.length||(frs.length&&!resting))lastActive=now;
   if(held.size)return;
+  const idle=now-lastTouch;
   if(events.length){
     /* nobody has touched for a while: layers leave a few at a time, once per loop, until the wall is quiet */
     if(idle>IDLE&&now-lastDrop>=LOOP){lastDrop=now;events.splice(0,Math.max(1,Math.ceil(events.length/4)));}
     return;
   }
-  if(!resting){if(idle>6&&!frs.length&&lumAvg<1.5)rest(now);return;}
+  if(!resting){if(now-lastActive>(METER&&lumAvg<1.2?4:20))rest(now);return;}     /* rest once the picture has faded to black */
   if(GHOST>0&&now>nextGhost&&!frs.length)ghost(now);
 }
-
-/* ===== UI ===== */
-/* the menu stays exactly as the user leaves it: it never auto-hides or pops back on pointer movement */
-function setMenu(open){
-  ui.classList.toggle('hide',!open);info.classList.toggle('hide',!open);
-  $('bMenu').classList.toggle('open',open);$('bMenu').setAttribute('aria-expanded',open);$('bMenu').textContent=open?'✕':'☰';
-}
-$('bMenu').onclick=()=>toggleMenu();
-/* fracture type picker: RANDOM, then GLITCH(ES) / INSTRUMENT */
-const sel=$('selType');
-const GLN={repeat:'Repeat',static:'Static',scan:'Scanlines',pump:'Pump',mosaic:'Mosaic',shard:'Shard',echo:'Echo',invert:'Invert',tear:'Tear',smear:'Smear',rgb:'RGB split',blocks:'Blocks',sort:'Pixel sort',post:'Posterize',slice:'Slice'};
-const INN={kick:'Kick',snare:'Snare roll',hat:'Hats',anvil:'Anvil',grind:'Grind',acid:'Acid bass',riser:'Riser',glass:'Glass',thud:'Thud',growl:'Growl',clang:'Clang',lead:'Pulse lead',noise:'Noise gate',siren:'Siren'};
-{
-  const o0=document.createElement('option');o0.value='random';o0.textContent='RANDOM';sel.appendChild(o0);
-  for(const k of INST){
-    const o=document.createElement('option');o.value=k;
-    o.textContent=SWATCH[k]+' '+(PRIMARY[k].map(n=>GLN[n]||n).join(' + ')+' / '+(INN[k]||k)).toUpperCase();
-    sel.appendChild(o);
-  }
-}
-sel.addEventListener('change',()=>{sel.blur();});
-const toastEl=$('toast');let toastT;
-function toast(s){toastEl.textContent=s;toastEl.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.style.opacity=0,3200);}
-function setSound(on){
-  soundOn=on;$('bSnd').textContent=on?'SOUND ON':'SOUND OFF';
-  if(AC)master.gain.setTargetAtTime(on?.9:0,AC.currentTime,.03);
-}
+/* a plugged-in keyboard: C clears everything, M mutes */
 function clearAll(){
-  if(exp){toast('EXPORT RUNNING');return;}
-  if(song)return;
-  held.forEach(fr=>{if(AC&&fr.voice)fr.voice.end(AC.currentTime,.3);});
-  held.clear();events.length=0;vq.length=0;mvq.length=0;frs=[];clearWorld();
+  held.forEach(fr=>{if(AC&&fr.voice)try{fr.voice.end(AC.currentTime,.3);}catch(_){}});
+  held.clear();events.length=0;frs=[];
   jobs.forEach(j=>{try{j.h.end(AC?AC.currentTime:0,.3);}catch(_){}});jobs.length=0;
-  g.fillStyle='#000';g.fillRect(0,0,simW,simH);loopT0=null;
   if(AC&&gate){gate.gain.cancelScheduledValues(AC.currentTime);gate.gain.setValueAtTime(1,AC.currentTime);}
-  if(KIOSK)rest(performance.now()/1000);
-  toast('HEALED');
+  rest(performance.now()/1000);
 }
-function stamp(){return new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);}
-function dl(blob,name){
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
-}
-function exportJPG(){
-  const iw=innerWidth,ih=innerHeight;let w,h;
-  if(iw>=ih){w=3840;h=Math.round(3840*ih/iw);}else{h=3840;w=Math.round(3840*iw/ih);}
-  const c=document.createElement('canvas');c.width=w;c.height=h;
-  const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(cv,0,0,w,h);
-  c.toBlob(b=>{if(b){dl(b,'fracture-'+stamp()+'-'+w+'x'+h+'.jpg');toast('SAVED '+w+' × '+h+' JPG');}},'image/jpeg',.95);
-}
-/* svg export: the crack geometry of every layer in the loop (plus anything still held), as clean vectors for
-   laser engraving. three colour-coded layers so laser software (LightBurn etc.) can give each its own operation:
-   CRACKS  black stroke  · continuous polylines, stroke width = crack width (score or line-engrave)
-   SLABS   blue fill     · the lit shard planes (fill / raster engrave)
-   FRAME   red hairline  · the canvas edge, at screen ratio (cut line or alignment, delete if not needed)
-   long side is 300 mm on import; scale to the material in the laser software. */
-const SVG_MM=300;
-function exportSVG(){
-  const W=simW,H=simH,f1=v=>Math.round(v*10)/10;
-  /* each layer only exports as far as its cracks actually grew (how long it was held), like on screen */
-  const geos=[],seen=new Set();
-  const grown=ev=>{let r=rad(ev.pEnd!=null?ev.pEnd:growth(ev.hold||0),MAXR());for(const o of ev.ops||[])if(o.k==='rev'&&o.r>r)r=o.r;return r;};
-  held.forEach(fr=>{if(fr.geo&&!seen.has(fr.uid)){seen.add(fr.uid);geos.push({geo:fr.geo,lim:rad(fr.p,fr.maxR)});}});
-  for(const e of events){if(e.geo&&e.vis!==false&&!seen.has(e.uid)){seen.add(e.uid);geos.push({geo:e.geo,lim:grown(e)});}}
-  if(!geos.length){toast('MAKE A FRACTURE FIRST');return;}
-  /* clip a segment to the canvas (Liang–Barsky); null if it is fully outside */
-  const clipSeg=(x1,y1,x2,y2)=>{
-    let t0=0,t1=1;const dx=x2-x1,dy=y2-y1;
-    const P=[-dx,dx,-dy,dy],Q=[x1,W-x1,y1,H-y1];
-    for(let i=0;i<4;i++){
-      if(P[i]===0){if(Q[i]<0)return null;continue;}
-      const r=Q[i]/P[i];
-      if(P[i]<0){if(r>t1)return null;if(r>t0)t0=r;}else{if(r<t0)return null;if(r<t1)t1=r;}
-    }
-    return[x1+dx*t0,y1+dy*t0,x1+dx*t1,y1+dy*t1,t0>0,t1<1];
-  };
-  /* clip a polygon to the canvas (Sutherland–Hodgman) */
-  const clipPoly=pts=>{
-    const edges=[[p=>p[0]>=0,'x',0],[p=>p[0]<=W,'x',W],[p=>p[1]>=0,'y',0],[p=>p[1]<=H,'y',H]];
-    let out=pts;
-    for(const [inside,ax,v] of edges){
-      const inp=out;out=[];if(!inp.length)break;
-      for(let i=0;i<inp.length;i++){
-        const a=inp[(i+inp.length-1)%inp.length],b=inp[i],ia=inside(a),ib=inside(b);
-        const cross=()=>{if(ax==='x'){const t=(v-a[0])/(b[0]-a[0]);return[v,a[1]+(b[1]-a[1])*t];}const t=(v-a[1])/(b[1]-a[1]);return[a[0]+(b[0]-a[0])*t,v];};
-        if(ib){if(!ia)out.push(cross());out.push(b);}else if(ia)out.push(cross());
-      }
-    }
-    return out;
-  };
-  const paths=[],slabs=[];
-  for(const {geo,lim} of geos){
-    /* chain segments of the same crack into continuous polylines (one laser path instead of hundreds of tiny ones) */
-    let cur=null,curId=-1,lx=NaN,ly=NaN;
-    const flush=()=>{if(cur&&cur.pts.length>1)paths.push(cur);cur=null;};
-    for(const s of geo.own){
-      if(s[6]!=null&&s[6]>lim){flush();continue;}
-      const c=clipSeg(s[0],s[1],s[2],s[3]);
-      if(!c){flush();continue;}
-      const w=s[5]||1;
-      if(!cur||s[4]!==curId||c[4]||Math.abs(c[0]-lx)>.01||Math.abs(c[1]-ly)>.01){flush();cur={w,pts:[[c[0],c[1]]]};curId=s[4];}
-      cur.pts.push([c[2],c[3]]);lx=c[2];ly=c[3];
-      if(c[5])flush();
-    }
-    flush();
-    for(const c of geo.cells){if(c.lit&&c.d<=lim){const p=clipPoly(c.pts);if(p.length>2)slabs.push(p);}}
-  }
-  const mmW=W>=H?SVG_MM:SVG_MM*W/H,mmH=W>=H?SVG_MM*H/W:SVG_MM;
-  const L=[];
-  L.push('<?xml version="1.0" encoding="UTF-8"?>');
-  L.push('<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="'+f1(mmW)+'mm" height="'+f1(mmH)+'mm" viewBox="0 0 '+W+' '+H+'">');
-  L.push('<title>Fracture</title><desc>Fracture · lampwrecked · '+geos.length+' layer'+(geos.length>1?'s':'')+' · '+paths.length+' crack paths · '+slabs.length+' slabs</desc>');
-  L.push('<g id="slabs" inkscape:groupmode="layer" inkscape:label="SLABS" fill="#0000ff" stroke="none">');
-  for(const p of slabs)L.push('<path d="M'+p.map(q=>f1(q[0])+' '+f1(q[1])).join('L')+'Z"/>');
-  L.push('</g>');
-  L.push('<g id="cracks" inkscape:groupmode="layer" inkscape:label="CRACKS" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">');
-  for(const p of paths)L.push('<path stroke-width="'+f1(Math.max(.6,p.w)*K)+'" d="M'+p.pts.map(q=>f1(q[0])+' '+f1(q[1])).join('L')+'"/>');
-  L.push('</g>');
-  L.push('<g id="frame" inkscape:groupmode="layer" inkscape:label="FRAME" fill="none" stroke="#ff0000" stroke-width="'+f1(K)+'"><rect x="0" y="0" width="'+W+'" height="'+H+'"/></g>');
-  L.push('</svg>');
-  dl(new Blob([L.join('\n')],{type:'image/svg+xml'}),'fracture-'+stamp()+'.svg');
-  toast('SAVED SVG · '+paths.length+' CRACKS · '+slabs.length+' SLABS');
-}
-/* ===== mp4 repair: browser recorders (Android Chrome especially) write FRAGMENTED mp4 whose header says the
-   length is 0, so phone galleries show the wrong length. this rebuilds it as a normal mp4 (one moov with the
-   full sample tables, then one mdat) without re-encoding anything: same frames, same sound, correct length. */
-function defragMP4(buf){
-  const d=new DataView(buf),u8=new Uint8Array(buf),N=buf.byteLength;
-  const u32=o=>d.getUint32(o),u64=o=>d.getUint32(o)*4294967296+d.getUint32(o+4),typ=o=>String.fromCharCode(u8[o],u8[o+1],u8[o+2],u8[o+3]);
-  const boxes=(s,e)=>{const out=[];let i=s;while(i+8<=e){let sz=u32(i),h=8;const t=typ(i+4);if(sz===1){sz=u64(i+8);h=16;}else if(sz===0)sz=e-i;if(sz<h||i+sz>e)break;out.push({t,s:i,h,e:i+sz,b:i+h});i+=sz;}return out;};
-  const kid=(b,t)=>boxes(b.b,b.e).find(x=>x.t===t),kids=(b,t)=>boxes(b.b,b.e).filter(x=>x.t===t);
-  const top=boxes(0,N),ftyp=top.find(b=>b.t==='ftyp'),moov=top.find(b=>b.t==='moov');
-  if(!ftyp||!moov||!top.some(b=>b.t==='moof'))return null;              /* already a normal mp4 (or not mp4): leave it */
-  /* tracks + their fragment defaults */
-  const tracks=new Map(),mvex=kid(moov,'mvex'),trex=new Map();
-  if(mvex)for(const x of kids(mvex,'trex'))trex.set(u32(x.b+4),{dur:u32(x.b+12),size:u32(x.b+16),flags:u32(x.b+20)});
-  for(const trak of kids(moov,'trak')){
-    const tkhd=kid(trak,'tkhd'),id=u32(tkhd.b+(u8[tkhd.b]===1?20:12)),mdia=kid(trak,'mdia'),mdhd=kid(mdia,'mdhd');
-    const ts=u32(mdhd.b+(u8[mdhd.b]===1?20:12)),hdlr=typ(kid(mdia,'hdlr').b+8);
-    tracks.set(id,{id,trak,ts,hdlr,S:[],chunks:[]});
-  }
-  /* read every fragment's samples: file offset, size, decode time, duration, sync, composition offset */
-  const order=[];
-  for(const moof of top.filter(b=>b.t==='moof'))for(const traf of kids(moof,'traf')){
-    const tfhd=kid(traf,'tfhd'),ff=u32(tfhd.b)&0xffffff,id=u32(tfhd.b+4),T=tracks.get(id);if(!T)continue;
-    const df=trex.get(id)||{dur:0,size:0,flags:0};let o=tfhd.b+8,base=moof.s,dDur=df.dur,dSize=df.size,dFl=df.flags;
-    if(ff&1){base=u64(o);o+=8;}if(ff&2)o+=4;if(ff&8){dDur=u32(o);o+=4;}if(ff&16){dSize=u32(o);o+=4;}if(ff&32){dFl=u32(o);o+=4;}
-    const tfdt=kid(traf,'tfdt');let t=tfdt?(u8[tfdt.b]===1?u64(tfdt.b+4):u32(tfdt.b+4)):(T.S.length?T.S[T.S.length-1].t+T.S[T.S.length-1].dur:0);
-    for(const trun of kids(traf,'trun')){
-      const v=u8[trun.b],tf=u32(trun.b)&0xffffff,n=u32(trun.b+4);let p=trun.b+8,off=base,first=null;
-      if(tf&1){off=base+d.getInt32(p);p+=4;}if(tf&4){first=u32(p);p+=4;}
-      const ch={T,first:T.S.length,n,src:off};
-      for(let i=0;i<n;i++){
-        let dur=dDur,size=dSize,fl=(i===0&&first!==null)?first:dFl,cto=0;
-        if(tf&0x100){dur=u32(p);p+=4;}if(tf&0x200){size=u32(p);p+=4;}if(tf&0x400){fl=u32(p);p+=4;if(i===0&&first!==null)fl=first;}
-        if(tf&0x800){cto=v?d.getInt32(p):u32(p);p+=4;}
-        T.S.push({off,size,t,dur,sync:!(fl&0x10000),cto});off+=size;t+=dur;
-      }
-      if(n){T.chunks.push(ch);order.push(ch);}
-    }
-  }
-  /* the fragment start times are the real timeline: each sample lasts until the next one starts */
-  let movDur=0;
-  for(const T of tracks.values()){
-    const S=T.S;if(!S.length)continue;
-    for(let i=0;i<S.length-1;i++)S[i].dur=Math.max(1,S[i+1].t-S[i].t);
-    T.dur=S[S.length-1].t+S[S.length-1].dur-S[0].t;T.t0=S[0].t;
-  }
-  const mvhd=kid(moov,'mvhd'),mts=u32(mvhd.b+(u8[mvhd.b]===1?20:12));
-  for(const T of tracks.values())if(T.S.length)movDur=Math.max(movDur,Math.round(T.dur*mts/T.ts));
-  /* new box writer */
-  const W=[];let len=0;
-  const box=(t,parts)=>{let n=8;for(const q of parts)n+=q.length;const h=new Uint8Array(8);new DataView(h.buffer).setUint32(0,n);for(let i=0;i<4;i++)h[4+i]=t.charCodeAt(i);const r=new Uint8Array(n);r.set(h,0);let o=8;for(const q of parts){r.set(q,o);o+=q.length;}return r;};
-  const ints=(a)=>{const r=new Uint8Array(a.length*4),v=new DataView(r.buffer);a.forEach((x,i)=>v.setUint32(i*4,x>>>0));return r;};
-  const full=(t,vf,a)=>box(t,[ints([vf]),ints(a)]);
-  const raw=b=>u8.subarray(b.s,b.e);
-  const setDur=(b,dur)=>{const c=u8.slice(b.s,b.e),v=new DataView(c.buffer),h=b.b-b.s;   /* mvhd / tkhd / mdhd */
-    if(c[h]===1){const o=h+(b.t==='tkhd'?28:24);v.setUint32(o,Math.floor(dur/4294967296));v.setUint32(o+4,dur>>>0);}
-    else v.setUint32(h+(b.t==='tkhd'?20:16),dur>>>0);return c;};
-  const stblFor=(T,offs)=>{
-    const S=T.S,stts=[];for(const s of S){const l=stts[stts.length-1];if(l&&l[1]===s.dur)l[0]++;else stts.push([1,s.dur]);}
-    const out=[];const stbl=kid(kid(kid(T.trak,'mdia'),'minf'),'stbl');
-    out.push(raw(kid(stbl,'stsd')));
-    out.push(full('stts',0,[stts.length].concat(...stts)));
-    if(S.some(s=>s.cto)){const c=[];for(const s of S){const l=c[c.length-1];if(l&&l[1]===s.cto)l[0]++;else c.push([1,s.cto]);}out.push(full('ctts',S.some(s=>s.cto<0)?0x01000000:0,[c.length].concat(...c)));}
-    if(S.some(s=>!s.sync)){const k=[];S.forEach((s,i)=>{if(s.sync)k.push(i+1);});out.push(full('stss',0,[k.length].concat(k)));}
-    out.push(full('stsz',0,[0,S.length].concat(S.map(s=>s.size))));
-    const sc=[];T.chunks.forEach((c,i)=>{const l=sc[sc.length-1];if(!l||l[1]!==c.n)sc.push([i+1,c.n,1]);});
-    out.push(full('stsc',0,[sc.length].concat(...sc)));
-    const big=offs.some(o=>o>4294967295);
-    if(big){const r=new Uint8Array(8+offs.length*8),v=new DataView(r.buffer);v.setUint32(4,offs.length);offs.forEach((o,i)=>{v.setUint32(8+i*8,Math.floor(o/4294967296));v.setUint32(12+i*8,o>>>0);});out.push(box('co64',[r]));}
-    else out.push(full('stco',0,[offs.length].concat(offs)));
-    return box('stbl',out);
-  };
-  const buildMoov=offFor=>{
-    const parts=[];
-    for(const b of boxes(moov.b,moov.e)){
-      if(b.t==='mvex')continue;
-      if(b.t==='mvhd'){parts.push(setDur(b,movDur));continue;}
-      if(b.t!=='trak'){parts.push(raw(b));continue;}
-      const T=[...tracks.values()].find(x=>x.trak.s===b.s);
-      if(!T||!T.S.length)continue;                                     /* empty track: drop it */
-      const tk=[];
-      for(const x of boxes(b.b,b.e)){
-        if(x.t==='tkhd'){tk.push(setDur(x,Math.round(T.dur*mts/T.ts)));continue;}
-        if(x.t==='edts')continue;
-        if(x.t!=='mdia'){tk.push(raw(x));continue;}
-        const md=[];
-        for(const y of boxes(x.b,x.e)){
-          if(y.t==='mdhd'){md.push(setDur(y,T.dur));continue;}
-          if(y.t!=='minf'){md.push(raw(y));continue;}
-          const mi=[];for(const z of boxes(y.b,y.e))mi.push(z.t==='stbl'?stblFor(T,offFor(T)):raw(z));
-          md.push(box('minf',mi));
-        }
-        tk.push(box('mdia',md));
-      }
-      /* a track that starts late (audio usually does) keeps its delay via an edit list */
-      if(T.t0>0){   /* elst v0, two entries: [empty gap of t0] then [the media from its start], both at rate 1 */
-        const el=new Uint8Array(32),ev=new DataView(el.buffer);ev.setUint32(4,2);
-        ev.setUint32(8,Math.round(T.t0*mts/T.ts));ev.setInt32(12,-1);ev.setInt16(16,1);
-        ev.setUint32(20,Math.round(T.dur*mts/T.ts));ev.setInt32(24,0);ev.setInt16(28,1);
-        tk.splice(1,0,box('edts',[box('elst',[el])]));}
-      parts.push(box('trak',tk));
-    }
-    return box('moov',parts);
-  };
-  /* data layout: samples copied in their original order, one chunk per fragment run */
-  let dataLen=0;for(const c of order){c.len=0;for(let i=0;i<c.n;i++)c.len+=c.T.S[c.first+i].size;dataLen+=c.len;}
-  const mdHead=dataLen+8>4294967295?16:8;
-  const offsFrom=start=>{let o=start;const m=new Map();for(const c of order){m.set(c,o);o+=c.len;}return T=>T.chunks.map(c=>m.get(c));};
-  const ft=raw(ftyp);
-  let mv=buildMoov(offsFrom(0));                      /* first pass only to learn the moov size */
-  mv=buildMoov(offsFrom(ft.length+mv.length+mdHead));
-  const out=new Uint8Array(ft.length+mv.length+mdHead+dataLen);let o=0;
-  out.set(ft,o);o+=ft.length;out.set(mv,o);o+=mv.length;
-  const hv=new DataView(out.buffer,o,mdHead);
-  if(mdHead===16){hv.setUint32(0,1);hv.setUint32(8,Math.floor((dataLen+16)/4294967296));hv.setUint32(12,(dataLen+16)>>>0);}else hv.setUint32(0,dataLen+8);
-  out.set([109,100,97,116],o+4);o+=mdHead;
-  for(const c of order){out.set(u8.subarray(c.src,c.src+c.len),o);o+=c.len;}
-  return out;
-}
-/* mp4 export: exactly 4 loops of the finished piece, starting on the loop boundary */
-let exp=null;
-function pickMime(){
-  const c=['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  if(!window.MediaRecorder)return null;
-  for(const m of c)if(MediaRecorder.isTypeSupported(m))return m;
-  return '';
-}
-const REC_LABEL='⬇ MP4 REC';
-function endExport(){
-  const E=exp;if(!E)return;
-  exp=null;$('bRec').classList.remove('on');$('bRec').textContent=REC_LABEL;
-  if(E.mr.state!=='inactive')E.mr.stop();
-}
-function exportMP4(){
-  if(exp){exp.cancel=true;endExport();toast('EXPORT CANCELLED');return;}
-  if(!AC||loopT0===null||!events.length){toast('MAKE A FRACTURE FIRST');return;}
-  const mime=pickMime();
-  if(mime===null){toast('RECORDING NOT SUPPORTED HERE');return;}
-  const rc=document.createElement('canvas'),L=1920,iw=innerWidth,ih=innerHeight;
-  let w,h;if(iw>=ih){w=L;h=Math.round(L*ih/iw);}else{h=L;w=Math.round(L*iw/ih);}
-  rc.width=w&~1;rc.height=h&~1;
-  const rctx=rc.getContext('2d');rctx.imageSmoothingEnabled=false;rctx.drawImage(cv,0,0,rc.width,rc.height);
-  const stream=rc.captureStream(60);
-  if(recDest)recDest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
-  const opts=mime?{mimeType:mime,videoBitsPerSecond:14e6,audioBitsPerSecond:192000}:{videoBitsPerSecond:14e6};
-  let mr;
-  try{mr=new MediaRecorder(stream,opts);}catch(e){try{mr=new MediaRecorder(stream);}catch(e2){toast('RECORDING FAILED');return;}}
-  const chunks=[],start=loopT0+Math.ceil((AC.currentTime+.5-loopT0)/LOOP)*LOOP,E={state:'armed',start,end:start+4*LOOP+.05,mr,rc,rctx,cancel:false};
-  mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
-  mr.onstop=()=>{
-    if(E.cancel)return;
-    const type=mr.mimeType||mime||'video/webm',ext=type.indexOf('mp4')>=0?'mp4':'webm',name='fracture-live-'+stamp()+'.'+ext;
-    const done=blob=>{dl(blob,name);toast('SAVED '+ext.toUpperCase()+' · 4 LOOPS'+(ext==='webm'?' (this browser has no MP4 recorder)':''));};
-    const rec=new Blob(chunks,{type});
-    if(ext!=='mp4'){done(rec);return;}
-    /* rebuild the fragmented recording as a normal mp4 so phone galleries show the real length */
-    toast('FINISHING MP4…');
-    rec.arrayBuffer().then(ab=>{let fixed=null;try{fixed=defragMP4(ab);}catch(e){console.warn('mp4 repair',e);}
-      done(fixed?new Blob([fixed],{type:'video/mp4'}):rec);}).catch(()=>done(rec));
-  };
-  exp=E;$('bRec').classList.add('on');$('bRec').textContent='◌ WAITING FOR BAR 1';toast('RECORDING THE LIVE CANVAS · 4 LOOPS');
-}
-function setClick(on){metOn=on;$('bClk').textContent=on?'CLICK ON':'CLICK OFF';if(!on){beatLvl=0;mvq.length=0;}}
-$('bSnd').onclick=()=>setSound(!soundOn);
-$('bClk').onclick=()=>setClick(!metOn);
-$('bRec').onclick=exportMP4;
-$('bJpg').onclick=exportJPG;
-$('bSvg').onclick=exportSVG;
-$('bClr').onclick=clearAll;
 addEventListener('keydown',e=>{
-  const k=e.key.toLowerCase();
-  if(song){if(k==='escape')stopSong();return;}
-  if(libOpen){if(k==='escape')closeLib();return;}
-  if(e.target&&e.target.tagName==='SELECT')return;
-  if(k==='c')clearAll();else if(k==='m')setSound(!soundOn);else if(k==='k')setClick(!metOn);else if(k==='h')toggleMenu();else if(k==='r')exportMP4();else if(k==='e')exportJPG();else if(k==='v')exportSVG();
-  else if(k.length===1&&k>='0'&&k<='9'&&+k<sel.options.length){sel.selectedIndex=+k;toast('TYPE · '+sel.options[sel.selectedIndex].textContent);}
+  const k=(e.key||'').toLowerCase();
+  if(k==='c')clearAll();
+  else if(k==='m'){soundOn=!soundOn;if(AC)master.gain.setTargetAtTime(soundOn?.9:0,AC.currentTime,.03);}
 });
 
-/* ===== LIBRARY · recipes are numbers only (no text, no images) ===== */
-const QS=new URLSearchParams(location.search);
-const API_URL='https://fracture-library.lampwrecked.workers.dev';                                   /* paste the Cloudflare Worker address here once it exists */
-const API=(QS.get('api')||API_URL).replace(/\/+$/,''),ADMIN=QS.get('admin')||'';
-const ENGINE=1;                                     /* bump when the engine changes how a recipe plays back */
-const RINST=['glass','thud','growl','clang','lead','noise','siren','kick','snare','hat','anvil','grind','acid','riser'];
-const RGL=['repeat','static','scan','pump','mosaic','shard','echo','invert','tear','smear','rgb','blocks','sort','post','slice'];
-const OPK=['rev','fl','g','l'],MAXO=240;
-const r3=v=>Math.round(v*1e3)/1e3,r4=v=>Math.round(v*1e4)/1e4,LOCAL0=100000,num=id=>id>LOCAL0?'#W'+String(id-LOCAL0).padStart(3,'0'):'#'+String(id).padStart(4,'0');
-function encodeRecipe(list){
-  return{v:ENGINE,l:list.slice(-MAXV).map(ev=>{
-    const A=Math.sqrt(ev.sw*ev.sh);let ops=ev.ops.filter(o=>o.t<=120);
-    if(ops.length>MAXO){       /* very long holds: keep every reveal/flash, thin the glitch ticks evenly */
-      const keep=ops.filter(o=>o.k==='rev'||o.k==='fl'),oth=ops.filter(o=>o.k!=='rev'&&o.k!=='fl'),n=Math.max(0,MAXO-keep.length),th=[];
-      for(let i=0;i<n;i++)th.push(oth[Math.floor(i*oth.length/n)]);
-      ops=keep.concat(th).sort((a,b)=>a.t-b.t);
-    }
-    const o=[];
-    for(const p of ops)o.push(r3(p.t),OPK.indexOf(p.k),p.n?RGL.indexOf(p.n):null,p.x===undefined?null:r4(p.x/ev.sw),p.y===undefined?null:r4(p.y/ev.sh),p.u===undefined?null:r4(p.u),r4((p.r||0)/A),p.q===undefined?null:r3(p.q));
-    return{i:RINST.indexOf(ev.inst),f:r3(ev.f),x:r4(ev.x),y:r4(ev.y),s:ev.seed>>>0,h:((ev.hue%360)+360)%360|0,st:ev.step,d:clamp(Math.round(ev.dur/STEP),1,63),ho:r3(Math.min(ev.hold,120)),rt:ev.ringT.slice(0,40).map(v=>isFinite(v)?r3(v):null),su:ev.stut?1:0,o};
-  })};
-}
-let uidR=5e5;
-function decodeRecipe(rec,startLoop){
-  const A=Math.sqrt(simW*simH);
-  return rec.l.map(l=>{
-    const ops=[],a=l.o,rg=mulberry32((l.s^0x9e3779b9)>>>0);
-    for(let i=0;i+7<a.length;i+=8){
-      const op={t:a[i],k:OPK[a[i+1]],r:a[i+6]*A,s:(rg()*1e9)|0};
-      if(a[i+2]!=null)op.n=RGL[a[i+2]];
-      if(a[i+3]!=null){op.x=a[i+3]*simW;op.y=a[i+4]*simH;}
-      if(a[i+5]!=null)op.u=a[i+5];
-      if(a[i+7]!=null)op.q=a[i+7];
-      if(op.k&&(op.k!=='g'||op.n))ops.push(op);
-    }
-    const dur=l.d*STEP;
-    return{inst:RINST[l.i],f:l.f,x:l.x,y:l.y,seed:l.s,hue:l.h,uid:++uidR,gen:0,dur,hold:l.ho,geo:null,ops,sw:simW,sh:simH,step:l.st,startLoop,
-      ringT:l.rt.map(v=>v==null?Infinity:v),pEnd:growth(dur),stut:!!l.su,vis:true,lg:null};
-  });
-}
-const cardOf=rec=>rec.l.map(l=>[l.i,l.x,l.y,l.s,l.h,l.st,l.d]);
-
-/* ---- storage (WALL): the library is SAVED ON THIS SCREEN (its browser's own database), so it works with no internet.
-   - everything saved here stays here (ids start with W) and is never sent to the public library
-   - whenever the screen does have internet, it quietly copies the public library down so those are here offline too ---- */
-async function api(path,opt){
-  const r=await fetch(API+path,opt);let j={};try{j=await r.json();}catch(_){}
-  if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;
-}
-const post=(path,body,extra)=>api(path,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},extra||{}),body:JSON.stringify(body)});
-const recCache={};
-const mem={cards:new Map(),data:new Map(),songs:new Map()};   /* fallback if the browser refuses a database (private mode) */
-let dbP=null;
-function idb(){
-  return dbP||(dbP=new Promise(res=>{
-    try{
-      const rq=indexedDB.open('fracture-wall',1);
-      rq.onupgradeneeded=()=>{const d=rq.result;['cards','data','songs'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'});});};
-      rq.onsuccess=()=>res(rq.result);rq.onerror=()=>res(null);
-    }catch(_){res(null);}
-  }));
-}
-const rqp=r=>new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
-const txp=tx=>new Promise((res,rej)=>{tx.oncomplete=()=>res();tx.onerror=tx.onabort=()=>rej(new Error('SCREEN STORAGE FULL'));});
-async function sAll(st){const d=await idb();return d?rqp(d.transaction(st).objectStore(st).getAll()):[...mem[st].values()];}
-async function sGet(st,id){const d=await idb();return d?rqp(d.transaction(st).objectStore(st).get(id)):mem[st].get(id);}
-async function sPut(st,v){const d=await idb();if(!d){mem[st].set(v.id,v);return;}const tx=d.transaction(st,'readwrite');tx.objectStore(st).put(v);return txp(tx);}
-async function sDel(st,id){const d=await idb();if(!d){mem[st].delete(id);return;}const tx=d.transaction(st,'readwrite');tx.objectStore(st).delete(id);return txp(tx);}
-let idxP=null;                           /* small in-memory list of what is stored (the big recipe data stays on disk) */
-function index(){return idxP||(idxP=(async()=>{const c=await sAll('cards'),g=await sAll('songs');return{cards:new Map(c.map(x=>[x.id,x])),songs:new Map(g.map(x=>[x.id,x]))};})());}
-const newest=m=>[...m.values()].sort((a,b)=>(b.at||0)-(a.at||0)||b.id-a.id);   /* saved-here first (newest on top), then the public ones */
-const nextId=m=>{let id=LOCAL0;m.forEach((v,k)=>{if(k>id)id=k;});return id+1;};
-const LIB={
-  shared:false,
-  async counts(){const I=await index();return[I.cards.size,I.songs.size];},
-  async listRecipes(off){
-    const a=newest((await index()).cards);
-    return{items:a.slice(off,off+24).map(r=>({id:r.id,uses:r.uses||0,card:r.card})),more:off+24<a.length};
-  },
-  async randomRecipes(n){
-    const a=[...(await index()).cards.values()],out=[];
-    while(a.length&&out.length<n){const r=a.splice((Math.random()*a.length)|0,1)[0];out.push({id:r.id,card:r.card});}
-    return out;
-  },
-  async recipes(ids){
-    const need=[...new Set(ids)].filter(id=>!recCache[id]);
-    for(const id of need){const r=await sGet('data',id);if(r)recCache[id]=r.data;}
-    const miss=need.filter(id=>!recCache[id]&&id<=LOCAL0);
-    if(miss.length&&API){try{await pull(miss.map(id=>({id,uses:0})));}catch(_){}}
-    return recCache;
-  },
-  async saveRecipe(rec){
-    const I=await index(),id=nextId(I.cards),c={id,uses:0,card:cardOf(rec),at:Date.now()};
-    await sPut('data',{id,data:rec});await sPut('cards',c);I.cards.set(id,c);recCache[id]=rec;return id;
-  },
-  async listSongs(off){const a=newest((await index()).songs);return{items:a.slice(off,off+30),more:off+30<a.length};},
-  async song(id){
-    const I=await index();let g=I.songs.get(+id);
-    if(!g&&API&&+id<=LOCAL0){try{g=await api('/songs/'+id);await sPut('songs',g);I.songs.set(g.id,g);}catch(_){}}
-    if(!g)throw new Error('SONG NOT FOUND');return g;
-  },
-  async saveSong(items,dots){
-    const I=await index(),id=nextId(I.songs),loops=items.reduce((a,it,i)=>a+it.n+(i<items.length-1?it.t/4:0),0),g={id,items,loops,dots,at:Date.now()};
-    await sPut('songs',g);I.songs.set(id,g);
-    for(const rid of new Set(items.flatMap(i=>i.c.map(c=>c[0])))){const c=I.cards.get(rid);if(c){c.uses=(c.uses||0)+1;try{await sPut('cards',c);}catch(_){}}}
-    return id;
-  },
-  async remove(kind,id){
-    const I=await index();
-    if(kind==='song'){await sDel('songs',id);I.songs.delete(id);}
-    else{await sDel('cards',id);await sDel('data',id);I.cards.delete(id);delete recCache[id];}
-  },
-  async report(kind,id){},
-  async hide(kind,id){if(API)return post('/admin/hide',{kind,id,hidden:1},{'X-Admin-Key':ADMIN});}
-};
-/* copy public-library recipes onto this screen (50 at a time) */
-async function pull(list){
-  const I=await index();let n=0;
-  for(let i=0;i<list.length;i+=50){
-    const part=list.slice(i,i+50),j=await api('/recipes/batch?ids='+part.map(x=>x.id).join(',')),got=new Map(j.items.map(r=>[r.id,r.data]));
-    for(const it of part){
-      const d=got.get(it.id);if(!d)continue;
-      await sPut('data',{id:it.id,data:d});
-      const c={id:it.id,uses:it.uses||0,card:it.card||cardOf(d)};await sPut('cards',c);I.cards.set(it.id,c);n++;
-    }
-  }
-  return n;
-}
-let syncing=false,lastSync=0;
-async function syncDown(){
-  if(!API||syncing||navigator.onLine===false||QP.get('sync')==='0')return;
-  if(performance.now()-lastSync<60000&&lastSync)return;
-  syncing=true;lastSync=performance.now();let added=0;
-  try{
-    const I=await index();
-    for(let off=0,pg=0;pg<25;pg++){
-      const j=await api('/recipes?offset='+off+'&limit=60');off+=j.items.length;
-      added+=await pull(j.items.filter(it=>!I.cards.has(it.id)));
-      if(!j.more||!j.items.length)break;
-    }
-    for(let off=0,pg=0;pg<10;pg++){
-      const j=await api('/songs?offset='+off+'&limit=60');off+=j.items.length;
-      for(const g of j.items)if(!I.songs.has(g.id)){await sPut('songs',g);I.songs.set(g.id,g);added++;}
-      if(!j.more||!j.items.length)break;
-    }
-  }catch(e){console.info('library sync skipped:',e.message);}
-  finally{syncing=false;}
-  if(added&&libOpen&&!song){libLabel();setTab(libTab);}
-}
-setTimeout(syncDown,4000);addEventListener('online',()=>{lastSync=0;syncDown();});
-function libLabel(){LIB.counts().then(([r,g])=>{$('libMode').textContent='SAVED ON THIS SCREEN · '+r+' FRACTURE'+(r===1?'':'S')+' · '+g+' SONG'+(g===1?'':'S');}).catch(()=>{});}
-
-/* ---- per-layer volume, so a transition can fade one recipe out while the next fades in ---- */
-let curLayer=null;
-function layerGains(ev){
-  if(!ev.lg){const L=gn(1),Ld=gn(1),Lv=gn(1);L.connect(bus);Ld.connect(dlyIn);Lv.connect(vrbIn);ev.lg=[L,Ld,Lv];}
-  return ev.lg;
-}
-
-/* ---- song player (watch only) ---- */
-let song=null,stash=[];
-const VOL=[.35,.65,1],VOLS=['▮▯▯','▮▮▯','▮▮▮'],CAP=48,MAXCOL=4;
-/* a song item is a slot: {c:[[recipe,vol],...], n:repeats, t:fade bars}. older songs stored {r,n,t} */
-const normItem=it=>it.c?it:{c:[[it.r,2]],n:it.n,t:it.t};
-function buildSegs(items,recs,skipFirst){
-  const cache={},evs=id=>cache[id]||(cache[id]=decodeRecipe(recs[id],0)),segs=[];
-  const col=it=>{const out=[];it.c.forEach(([id,v])=>{if(recs[id])evs(id).forEach(e=>out.push([e,VOL[v]==null?1:VOL[v]]));});return out;};
-  items.forEach((it,idx)=>{
-    const A=col(it);if(!A.length)return;
-    const ids=it.c.map(c=>c[0]);
-    if(!(skipFirst&&idx===0))for(let k=0;k<it.n;k++)segs.push({lay:A.map(([e,v])=>[e,v,v,true]),card:idx,rep:k+1,of:it.n,ids});
-    const nx=items[idx+1];
-    if(it.t&&nx){
-      const B=col(nx),inA=new Set(A.map(a=>a[0]));
-      if(B.length&&!B.some(b=>inA.has(b[0]))){
-        const K=it.t/4;
-        for(let k=0;k<K;k++){
-          const a0=1-k/K,a1=1-(k+1)/K,b0=k/K,b1=(k+1)/K,am=(a0+a1)/2,bm=(b0+b1)/2;
-          /* sound crossfades; the old slot's layers drop out one by one while the new slot's come in,
-             so even two full slots never play much more than one slot's worth (48 layers) at once */
-          segs.push({lay:A.filter((x,j)=>(j+.5)/A.length<am).map(([e,v])=>[e,v*a0,v*a1,true])
-            .concat(B.filter((x,j)=>(j+.5)/B.length<bm).map(([e,v])=>[e,v*b0,v*b1,true])),card:idx,trans:[idx,idx+1],k:k+1,of:K,ids:ids.concat(nx.c.map(c=>c[0]))});
-        }
-      }
-    }
-  });
-  return segs;
-}
-function songLoop(T){
-  if(!song)return;
-  song.i++;events.length=0;song.played=(song.played||0)+1;
-  if(song.endless){
-    if(song.i>=song.segs.length)song.i=song.segs.length-1;      /* next batch not here yet: play the last loop again */
-    if(song.segs.length-song.i<4)extendEndless();
-  }
-  if(song.i>=song.segs.length){song.endT=T;return;}
-  for(const [e,g0,g1,vis] of song.segs[song.i].lay){
-    e.vis=vis;e.startLoop=0;
-    if(AC){const lg=layerGains(e);lg.forEach(n=>{n.gain.cancelScheduledValues(T);n.gain.setValueAtTime(g0,T);n.gain.linearRampToValueAtTime(g1,T+LOOP-.01);});}
-    events.push(e);
-  }
-}
-function wipe(){
-  held.forEach(fr=>{if(AC&&fr.voice)fr.voice.end(AC.currentTime,.3);});held.clear();
-  jobs.forEach(j=>{try{j.h.end(AC?AC.currentTime:0,.3);}catch(_){}});jobs.length=0;
-  events.length=0;vq.length=0;mvq.length=0;frs=[];clearWorld();
-  g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#000';g.fillRect(0,0,simW,simH);
-  if(AC&&gate){gate.gain.cancelScheduledValues(AC.currentTime);gate.gain.setValueAtTime(1,AC.currentTime);}
-}
-async function startSong(items,title,endless){
-  if(exp){toast('EXPORT RUNNING');return;}
-  try{initAudio();}catch(_){}
-  if(!AC){toast('AUDIO UNAVAILABLE');return;}
-  if(AC.state!=='running')AC.resume();
-  let recs;
-  items=items.map(normItem);
-  try{toast('LOADING…');recs=await LIB.recipes(items.flatMap(i=>i.c.map(c=>c[0])));}catch(e){toast('COULD NOT LOAD · '+e.message);return;}
-  items=items.filter(i=>i.c.some(c=>recs[c[0]]));
-  if(!items.length){toast('NOTHING TO PLAY');return;}
-  if(!song)stash=events.slice();
-  wipe();
-  const segs=buildSegs(items,recs);
-  song={segs,i:-1,endT:null,title,items,endless:!!endless,recent:[],fetching:false,played:0};
-  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>{song&&(song.lock=l);}).catch(()=>{});}catch(_){}
-  const t=AC.currentTime+.25;loopT0=t;nextT=t;nextStep=0;loopNo=0;mNext=t;mBeat=0;
-  songLoop(t);
-  closeLib();hint.style.opacity=0;document.body.classList.add('watching');
-  $('wAgain').style.display='none';toastEl.style.opacity=0;
-}
-function stopSong(){
-  if(!song)return;
-  try{song.lock&&song.lock.release();}catch(_){}
-  song=null;wipe();document.body.classList.remove('watching');
-  if(stash.length&&AC){stash.forEach(e=>{e.startLoop=0;events.push(e);});const t=AC.currentTime+.1;loopT0=t;nextT=t;nextStep=0;loopNo=0;mNext=t;mBeat=0;}
-  else loopT0=null;
-  stash=[];
-}
-function songStatus(){
-  if(!song)return'';
-  if(song.endT!==null)return(song.title||'SONG')+' · END';
-  const s=song.segs[Math.max(0,song.i)];if(!s)return'';
-  if(song.endless)return'∞ ENDLESS · '+(s.ids||[]).map(num).join(s.trans?' → ':' + ')+(s.trans?' · FADE':'')+' · LOOP '+song.played;
-  const n=song.items.length;
-  return(song.title||'SONG')+' · SLOT '+(s.card+1)+'/'+n+(s.trans?' · FADE → '+(s.trans[1]+1):' · ×'+s.rep+'/'+s.of)+' · LOOP '+(song.i+1)+'/'+song.segs.length;
-}
-$('wStop').onclick=stopSong;
-$('wAgain').onclick=()=>{if(song)startSong(song.items,song.title);};
-
-/* ---- drawing a card: a sketch grown from the recipe's numbers + the 64-step hit strip ---- */
-function drawThumb(c,card){
-  const x=c.getContext('2d'),w=c.width,h=c.height;
-  x.fillStyle='#000';x.fillRect(0,0,w,h);x.globalCompositeOperation='lighter';x.lineCap='round';
-  for(const [i,lx,ly,s,hu] of card){
-    const sa=famSat(RINST[i]);
-    const rg=mulberry32(s>>>0),arms=2+((rg()*3)|0),a0=rg()*TAU;
-    const walk=(px,py,a,n,wd,d)=>{
-      x.beginPath();x.moveTo(px,py);const pts=[[px,py]];
-      for(let k=0;k<n;k++){a+=(rg()-.5)*.5;px+=Math.cos(a)*(5+rg()*9)*w/320;py+=Math.sin(a)*(5+rg()*9)*w/320;x.lineTo(px,py);pts.push([px,py]);}
-      x.strokeStyle='hsla('+hu+','+sa+'%,58%,.28)';x.lineWidth=wd*3;x.stroke();x.strokeStyle='hsla('+hu+','+sa+'%,88%,.85)';x.lineWidth=wd;x.stroke();
-      if(d<2)for(let k=2;k<pts.length;k+=4)if(rg()<.45)walk(pts[k][0],pts[k][1],a+(rg()<.5?-1:1)*(.5+rg()),(n*.5)|0,wd*.7,d+1);
-    };
-    for(let k=0;k<arms;k++)walk(lx*w,ly*h,a0+k*TAU/arms+(rg()-.5),10+((rg()*12)|0),1.4,0);
-    const gr=x.createRadialGradient(lx*w,ly*h,0,lx*w,ly*h,14);gr.addColorStop(0,'hsla('+hu+','+sa+'%,80%,.6)');gr.addColorStop(1,'hsla('+hu+','+sa+'%,50%,0)');
-    x.fillStyle=gr;x.fillRect(lx*w-14,ly*h-14,28,28);
-  }
-  x.globalCompositeOperation='source-over';
-}
-function drawStrip(c,card){
-  const x=c.getContext('2d'),w=c.width,h=c.height,cw=w/64,n=Math.max(1,card.length),rh=h/n;
-  x.fillStyle='#070707';x.fillRect(0,0,w,h);
-  for(let s=0;s<64;s+=4){x.fillStyle=s%16?'rgba(255,255,255,.06)':'rgba(255,255,255,.22)';x.fillRect(Math.round(s*cw),0,1,h);}
-  card.forEach(([i,lx,ly,sd,hu,st,d],j)=>{
-    const y=j*rh,sa=famSat(RINST[i]);x.fillStyle='hsla('+hu+','+sa+'%,60%,.35)';
-    for(let k=0;k<d;k++){const s=(st+k)%64;x.fillRect(s*cw,y,cw+.5,Math.max(1,rh-.5));}
-    x.fillStyle='hsl('+hu+','+sa+'%,75%)';x.fillRect(st*cw,y,Math.max(2,cw),Math.max(1,rh-.5));
-  });
-}
-const INAME=k=>(INN[k]||k).toUpperCase();
-function chips(card){
-  const u=[...new Set(card.map(l=>RINST[l[0]]))];
-  return u.slice(0,3).map(INAME).join(' · ')+(u.length>3?' · +'+(u.length-3):'');
-}
-
-/* ---- library panel ---- */
-const libEl=$('lib'),grid=$('grid'),sItems=$('sItems');
-let libTab='recipes',libOff=0,libOpen=false,strip=[];
-const cardIndex={};
-function openLib(){initSort();libOpen=true;libEl.classList.remove('hide');$('libMode').textContent='SAVED ON THIS SCREEN';libLabel();setTab(libTab);syncDown();}
-function closeLib(){libOpen=false;libEl.classList.add('hide');}
-function setTab(t){
-  libTab=t;libOff=0;grid.innerHTML='';
-  libEl.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  libEl.classList.toggle('songs',t==='songs');
-  loadMore();
-}
-function btn(txt,fn,cls){const b=document.createElement('button');b.textContent=txt;if(cls)b.className=cls;b.onclick=e=>{e.stopPropagation();fn(b);};return b;}
-async function loadMore(){
-  const more=$('more');more.style.display='none';
-  const empty=()=>{if(!grid.children.length){const p=document.createElement('div');p.className='empty';p.textContent=libTab==='songs'?'NO SONGS YET · BUILD ONE ON THE STRIP IN LIBRARY':'NO RECIPES YET · MAKE A LOOP, THEN MENU → SAVE';grid.appendChild(p);}};
-  try{
-    if(libTab==='recipes'){
-      const j=await LIB.listRecipes(libOff);libOff+=j.items.length;
-      j.items.forEach(it=>{cardIndex[it.id]=it.card;grid.appendChild(recipeCard(it));});
-      more.style.display=j.more?'':'none';
-    }else{
-      const j=await LIB.listSongs(libOff);libOff+=j.items.length;
-      j.items.forEach(s=>grid.appendChild(songRow(s)));
-      more.style.display=j.more?'':'none';
-    }
-  }catch(e){toast('LIBRARY ERROR · '+e.message);}
-  empty();
-}
-$('more').onclick=loadMore;
-function recipeCard(it){
-  const el=document.createElement('div');el.className='card';
-  const th=document.createElement('canvas');th.width=320;th.height=200;th.className='th';drawThumb(th,it.card);
-  const st=document.createElement('canvas');st.width=320;st.height=28;st.className='st';drawStrip(st,it.card);
-  const ch=document.createElement('div');ch.className='chips';ch.textContent=chips(it.card);
-  const me=document.createElement('div');me.className='meta';
-  me.innerHTML='<b>FRACTURE '+num(it.id)+'</b><span>'+it.card.length+' LAYER'+(it.card.length>1?'S':'')+(it.uses?' · ⟲ '+it.uses:'')+'</span>';
-  const ac=document.createElement('div');ac.className='act';
-  ac.append(btn('▶',()=>startSong([{c:[[it.id,2]],n:2,t:0}],'FRACTURE '+num(it.id)),'play'),
-    btn('＋ CANVAS',()=>addToCanvas(it.id)),
-    btn('＋ SONG',()=>{addStrip(it.id,it.card);}),
-    btn('＋ LAYER',()=>{addLayer(it.id,it.card);}),
-    btn('✕',b=>removeItem('recipe',it.id,b,el),'rep'));
-  if(ADMIN&&API)ac.append(btn('HIDE',()=>LIB.hide('recipe',it.id).then(()=>el.remove()).catch(e=>toast(e.message)),'rep'));
-  el.append(th,st,ch,me,ac);
-  return el;
-}
-function songRow(s){
-  const el=document.createElement('div');el.className='card song';
-  const sec=Math.round(s.loops*LOOP),dots=document.createElement('div');dots.className='dots';
-  (s.dots||[]).forEach(sl=>{const c=document.createElement('span');[].concat(sl).forEach(hu=>{const d=document.createElement('i');d.style.background='hsl('+hu+',100%,62%)';c.appendChild(d);});dots.appendChild(c);});
-  const me=document.createElement('div');me.className='meta';
-  me.innerHTML='<b>SONG '+num(s.id)+'</b><span>'+s.items.length+' SLOT'+(s.items.length>1?'S':'')+' · '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')+'</span>';
-  const ac=document.createElement('div');ac.className='act';
-  ac.append(btn('▶ WATCH',()=>startSong(s.items,'SONG '+num(s.id)),'play'),
-    btn('LINK',()=>{const u=location.origin+location.pathname+'?song='+s.id+(QS.get('api')?'&api='+encodeURIComponent(API):'');try{navigator.clipboard.writeText(u);toast('LINK COPIED');}catch(_){toast(u);}}),
-    btn('✕',b=>removeItem('song',s.id,b,el),'rep'));
-  if(ADMIN&&API)ac.append(btn('HIDE',()=>LIB.hide('song',s.id).then(()=>el.remove()).catch(e=>toast(e.message)),'rep'));
-  el.append(me,dots,ac);
-  return el;
-}
-/* take a card or song off this screen: first tap asks, second tap removes (the public library is never touched) */
-async function removeItem(kind,id,b,el){
-  if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='REMOVE?';setTimeout(()=>{b.dataset.sure='';b.textContent='✕';},3000);return;}
-  try{await LIB.remove(kind,id);el.remove();libLabel();toast('REMOVED FROM THIS SCREEN');}catch(e){toast(e.message);}
-}
-async function report(kind,id,b,el){
-  if(!LIB.shared){toast('REPORTS WORK ONCE THE LIBRARY IS SHARED');return;}
-  try{await LIB.report(kind,id);b.disabled=true;b.textContent='⚑ SENT';el.classList.add('reported');}catch(e){toast(e.message);}
-}
-async function addToCanvas(id){
-  try{initAudio();}catch(_){}
-  let recs;try{recs=await LIB.recipes([id]);}catch(e){toast('COULD NOT LOAD · '+e.message);return;}
-  if(!recs[id])return;
-  if(AC&&loopT0===null){const t=AC.currentTime+.1;loopT0=t;nextT=t;nextStep=0;loopNo=0;mNext=t;mBeat=0;}
-  const add=decodeRecipe(recs[id],loopT0===null?0:loopNo+1);
-  add.forEach(e=>{events.push(e);if(events.length>MAXV)events.shift();});
-  hint.style.opacity=0;
-  toast('ADDED '+add.length+' LAYERS · ENTER ON THE NEXT LOOP');
-}
-$('libRand').onclick=async()=>{
-  try{const it=await LIB.randomRecipes(1);if(!it.length){toast('LIBRARY IS EMPTY');return;}await addToCanvas(it[0].id);}catch(e){toast(e.message);}
-};
-
-/* ---- song strip: slots in order; a slot layers up to 4 cards (48 layers) that play together ---- */
-const TR=[0,4,8,16],REP=[1,2,3,4,6,8];
-let slotSel=-1;
-const slotLayers=sl=>sl.c.reduce((a,x)=>a+x.card.length,0);
-function addStrip(id,card,n,t){
-  if(strip.length>=64){toast('SONG IS FULL (64 SLOTS)');return;}
-  card=card||cardIndex[id]||[];
-  strip.push({c:[{r:id,v:2,card}],n:n||1,t:t||0});slotSel=strip.length-1;renderStrip();
-  sItems.scrollLeft=sItems.scrollWidth;
-}
-function addLayer(id,card){
-  card=card||cardIndex[id]||[];
-  if(!strip.length){addStrip(id,card);return;}
-  if(slotSel<0||slotSel>=strip.length)slotSel=strip.length-1;
-  const sl=strip[slotSel];
-  if(sl.c.some(x=>x.r===id)){toast('ALREADY IN THIS SLOT');return;}
-  if(sl.c.length>=MAXCOL){toast('A SLOT HOLDS '+MAXCOL+' CARDS');return;}
-  if(slotLayers(sl)+card.length>CAP){toast('TOO MANY LAYERS · '+(slotLayers(sl)+card.length)+'/'+CAP);return;}
-  sl.c.push({r:id,v:2,card});renderStrip();toast('LAYERED INTO SLOT '+(slotSel+1));
-}
-function renderStrip(){
-  sItems.innerHTML='';
-  if(!strip.length){const p=document.createElement('div');p.className='sempty';p.textContent='SONG STRIP · ＋ SONG STARTS A SLOT · ＋ LAYER STACKS A CARD INTO THE SELECTED SLOT';sItems.appendChild(p);}
-  if(slotSel>=strip.length)slotSel=strip.length-1;
-  strip.forEach((it,i)=>{
-    const el=document.createElement('div');el.className='scard'+(it.n>1?' stack':'');el.dataset.i=i;
-    const colEl=document.createElement('div');colEl.className='scol'+(i===slotSel?' sel':'');
-    colEl.onclick=()=>{slotSel=i;renderStrip();};
-    const hd=document.createElement('div');hd.className='shead';
-    const cnt=document.createElement('span');cnt.className='scnt';cnt.textContent=slotLayers(it)+'/'+CAP;
-    hd.append(btn('◀',()=>{if(i>0){[strip[i-1],strip[i]]=[strip[i],strip[i-1]];if(slotSel===i)slotSel--;renderStrip();}}),
-      btn('▶',()=>{if(i<strip.length-1){[strip[i+1],strip[i]]=[strip[i],strip[i+1]];if(slotSel===i)slotSel++;renderStrip();}}),
-      cnt,btn('×'+it.n,()=>{it.n=REP[(REP.indexOf(it.n)+1)%REP.length];renderStrip();},'srep'));
-    colEl.appendChild(hd);
-    it.c.forEach((x,k)=>{
-      const m=document.createElement('div');m.className='smini';
-      const th=document.createElement('canvas');th.width=128;th.height=it.c.length>1?40:72;drawThumb(th,x.card);
-      const lb=document.createElement('span');lb.className='sl';lb.textContent=num(x.r);
-      m.append(th,lb,
-        btn('✕',()=>{it.c.splice(k,1);if(!it.c.length)strip.splice(i,1);renderStrip();},'sx'),
-        btn(VOLS[x.v],()=>{x.v=(x.v+1)%3;renderStrip();},'svol'));
-      colEl.appendChild(m);
-    });
-    el.appendChild(colEl);
-    if(i<strip.length-1)el.appendChild(btn(it.t?'FADE '+it.t:'CUT',()=>{it.t=TR[(TR.indexOf(it.t)+1)%TR.length];renderStrip();},'str'+(it.t?' on':'')));
-    sItems.appendChild(el);
-  });
-  const loops=strip.reduce((a,it,i)=>a+it.n+(i<strip.length-1?it.t/4:0),0),sec=Math.round(loops*LOOP);
-  $('sLen').textContent=strip.length?Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'):'';
-}
-const songItems=()=>strip.map((s,i)=>({c:s.c.map(x=>[x.r,x.v]),n:s.n,t:i<strip.length-1?s.t:0}));
-$('sRand').onclick=async()=>{
-  try{
-    const it=await LIB.randomRecipes(9);if(!it.length){toast('LIBRARY IS EMPTY');return;}
-    let i=0;
-    while(i<it.length&&strip.length<64){
-      const r=it[i++];cardIndex[r.id]=r.card;
-      strip.push({c:[{r:r.id,v:2,card:r.card}],n:REP[(Math.random()*3)|0],t:TR[(Math.random()*TR.length)|0]});
-      const sl=strip[strip.length-1],r2=it[i];
-      if(r2&&Math.random()<.35&&r2.id!==r.id&&slotLayers(sl)+r2.card.length<=CAP){cardIndex[r2.id]=r2.card;sl.c.push({r:r2.id,v:1,card:r2.card});i++;}
-    }
-    slotSel=strip.length-1;renderStrip();sItems.scrollLeft=sItems.scrollWidth;
-  }catch(e){toast(e.message);}
-};
-$('sPlay').onclick=()=>{if(!strip.length){toast('ADD CARDS FIRST');return;}startSong(songItems(),'YOUR SONG');};
-$('sClr').onclick=()=>{strip=[];slotSel=-1;renderStrip();};
-$('sSave').onclick=async()=>{
-  if(!strip.length){toast('ADD CARDS FIRST');return;}
-  $('sSave').disabled=true;
-  try{const id=await LIB.saveSong(songItems(),strip.map(s=>s.c.map(x=>(x.card[0]||[0,0,0,0,0])[4])));toast('SAVED ON THIS SCREEN · SONG '+num(id));}
-  catch(e){toast('NOT SAVED · '+e.message);}
-  setTimeout(()=>$('sSave').disabled=false,2500);
-};
-libEl.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-$('libClose').onclick=closeLib;
-$('bLib').onclick=openLib;
-$('bLw').onclick=()=>{window.open('https://lampwrecked.art','_blank','noopener');};
-$('bSave').onclick=async()=>{
-  if(!events.length){toast('MAKE A LOOP FIRST');return;}
-  const b=$('bSave');b.disabled=true;
-  try{const id=await LIB.saveRecipe(encodeRecipe(events));toast('SAVED ON THIS SCREEN · FRACTURE '+num(id));}
-  catch(e){toast('NOT SAVED · '+e.message);}
-  setTimeout(()=>b.disabled=false,2500);
-};
-let sortOn=false;
-function initSort(){if(sortOn||!window.Sortable)return;sortOn=true;try{Sortable.create(sItems,{animation:150,delay:180,delayOnTouchOnly:true,filter:'button',preventOnFilter:false,draggable:'.scard',
-  onEnd:ev=>{if(ev.oldIndex===ev.newIndex)return;const m=strip.splice(ev.oldIndex,1)[0];strip.splice(ev.newIndex,0,m);slotSel=ev.newIndex;renderStrip();}});}catch(_){}}
-renderStrip();
-
-/* a shared song link (?song=12) waits for one tap, because browsers only start sound after a tap */
-/* ---- endless: keeps pulling random recipes from the library, forever, with fades between them ---- */
-function genItems(list){
-  const out=[];
-  for(let i=0;i<list.length;i++){
-    const r=list[i],it={c:[[r.id,2]],n:1+((Math.random()*2)|0),t:[4,4,8,8,16,0][(Math.random()*6)|0]},r2=list[i+1];
-    if(r2&&Math.random()<.3&&r2.id!==r.id&&(r.card||[]).length+(r2.card||[]).length<=CAP){it.c.push([r2.id,1]);i++;}
-    out.push(it);
-  }
-  return out;
-}
-async function extendEndless(){
-  const S=song;if(!S||!S.endless||S.fetching)return;S.fetching=true;
-  try{
-    let list=await LIB.randomRecipes(8);
-    const fresh=list.filter(r=>!S.recent.includes(r.id));if(fresh.length>=2)list=fresh;
-    const items=genItems(list);if(!items.length)return;
-    const recs=await LIB.recipes(items.flatMap(i=>i.c.map(c=>c[0])));
-    if(song!==S)return;
-    const last=S.items[S.items.length-1];
-    S.segs.push(...buildSegs([last].concat(items),recs,true));
-    S.items=[last].concat(items).slice(-3);
-    items.forEach(i=>i.c.forEach(c=>S.recent.push(c[0])));S.recent=S.recent.slice(-10);
-    if(S.i>24){S.segs.splice(0,S.i-1);S.i=1;}                     /* forget loops already played so hours of play stay light */
-  }catch(e){console.warn('endless',e);}
-  finally{S.fetching=false;}
-}
-async function startEndless(){
-  try{initAudio();if(AC&&AC.state!=='running')AC.resume();}catch(_){}
-  let list;
-  try{toast('LOADING…');list=await LIB.randomRecipes(8);}catch(e){toast('LIBRARY OFFLINE · '+e.message);return;}
-  if(!list.length){toast('LIBRARY IS EMPTY');return;}
-  await startSong(genItems(list),'ENDLESS',true);
-  if(song&&song.endless)song.recent=list.map(r=>r.id);
-}
-$('libEndless').onclick=startEndless;
-let pendingEndless=QS.has('endless');
-if(pendingEndless){hint.innerHTML='<b>FRACTURE</b><span>tap to start · endless</span>';}
-let pendingSong=QS.get('song')?+QS.get('song'):0;
-if(pendingSong){hint.innerHTML='<b>FRACTURE</b><span>tap to watch song '+num(pendingSong)+'</span>';}
-async function playPending(){
-  const id=pendingSong;pendingSong=0;
-  try{initAudio();if(AC&&AC.state!=='running')AC.resume();}catch(_){}
-  try{const s=await LIB.song(id);startSong(s.items,'SONG '+num(id));}catch(e){toast('SONG '+num(id)+' NOT FOUND');hint.innerHTML='<b>FRACTURE</b><span>press · hold · touch</span>';}
-}
-
 /* ===== main loop ===== */
-/* adaptive detail: if the page stays below ~22 fps for 3 s, draw the canvas at a lower resolution
-   (1920 -> 1600 -> 1200 -> 900 on the long edge, remembered for next time). timing and sound are unaffected; the picture just gets softer. */
+/* if the page stays under ~24 frames a second for 2 s, the canvas drops a step in detail (1920 -> 1600 -> 1280 -> 960), remembered */
 let slowSince=0;
 function qualityCheck(now){
-  if(fms<45||held.size||exp||simLong<=900){slowSince=0;return;}
+  if(fms<42||simLong<=960){slowSince=0;return;}
   if(!slowSince){slowSince=now;return;}
-  if(now-slowSince<1.5)return;
-  slowSince=0;simLong=simLong>1600?1600:simLong>1200?1200:900;K=simLong/1600;
+  if(now-slowSince<2)return;
+  slowSince=0;simLong=simLong>1600?1600:simLong>1280?1280:960;K=simLong/1600;
   try{localStorage.setItem(RES_KEY,simLong);}catch(_){}
   clearWorld();frs=frs.filter(f=>f.live);resize();
 }
-let lastFrameT=0,fms=16,beatLvl=0;const beatEl=$('beat');
-let lastResume=0;
+let lastFrameT=0,fms=16,lastResume=0,worst=0,jsMs=0;
 function frame(){
   requestAnimationFrame(frame);
   try{
-  const now=performance.now()/1000;
+  const now=performance.now()/1000,j0=performance.now();
   if(AC&&AC.state!=='running'&&now-lastResume>1){lastResume=now;try{AC.resume();}catch(_){}}
   sched();
-  if(lastFrameT){fms=fms*.9+(now-lastFrameT)*1000*.1;}lastFrameT=now;
+  const dt=lastFrameT?now-lastFrameT:0;
+  if(lastFrameT){fms=fms*.9+dt*1000*.1;worst=Math.max(worst*.985,dt*1000);}lastFrameT=now;
   budget=fms>48?1:fms>32?2:3;
   rbudget=fms>50?2:fms>34?4:fms>24?7:10;
-  qualityCheck(now);      /* slow device: fewer glitches per frame so it stays playable */
+  qualityCheck(now);
   idleTick(now);
   if(AC){
     const ac=AC.currentTime;
-    const lat=AC.outputLatency||AC.baseLatency||0;
-    while(mvq.length&&mvq[0].t+lat<=ac){const b=mvq.shift();if(metOn)beatLvl=b.f?1:b.a?.75:.4;}
-    while(vq.length&&vq[0].t<=ac){const e=vq.shift();if(ac-e.t<.5&&e.vis)spawnReplay(e.ev);}
+    while(mvq.length&&mvq[0].t<=ac)mvq.shift();
+    /* at most one layer is re-grown per frame, so layers that land on the same beat can't stall a frame (and a waiting touch) */
+    let nb=0;
+    while(vq.length&&vq[0].t<=ac&&nb<1){const e=vq.shift();if(ac-e.t<.5&&e.vis){spawnReplay(e.ev);nb++;}}
   }
-  if(fms<=40||(++fcount&1))fadePass();   /* one quarter of the canvas per frame (every other frame when slow) */
+  fadeAcc+=Math.min(dt,.25);
+  if(METER&&now-lumT>.3&&(!resting||frs.length)){lumT=now;try{measure();}catch(_){}}
+  if(fadeAcc>=1/15){fadeAcc=Math.min(fadeAcc-1/15,1/15);if(!resting||frs.length)fadePass();}
   snapDirty=true;
   for(let i=0;i<frs.length;i++){try{frs[i].step(now);}catch(e){frs[i].done=true;console.warn('fracture error',e);}}
   if(frs.some(f=>f.done))frs=frs.filter(f=>!f.done);
-  if(shake>.3){cv.style.transform='translate('+((rnd()-.5)*shake*Z).toFixed(1)+'px,'+((rnd()-.5)*shake*Z).toFixed(1)+'px)';shake*=.88;}
-  else if(shake){shake=0;cv.style.transform='';}
-  if(exp&&AC){
-    const ac=AC.currentTime;
-    if(exp.state==='armed'){
-      if(ac>=exp.start-.04){
-        exp.mr.start(250);exp.state='rec';
-      }else $('bRec').textContent='◌ STARTS IN '+Math.ceil(exp.start-ac)+'s';
-    }
-    exp.rctx.drawImage(cv,0,0,exp.rc.width,exp.rc.height);
-    if(exp.state==='rec'){
-      $('bRec').textContent='● PASS '+clamp(1+Math.floor((ac-exp.start)/LOOP),1,4)+'/4';
-      if(ac>=exp.end)endExport();
-    }
+  if(DEBUG){
+    jsMs=jsMs*.9+(performance.now()-j0)*.1;
+    dbg.textContent='B1  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms\nres '+simLong+'  screen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  layers '+events.length+'/'+MAXV+'  lum '+lumAvg.toFixed(0)+'  audio '+(AC?AC.state:'none');
   }
-  beatLvl*=.82;beatEl.style.opacity=beatLvl>.03?beatLvl.toFixed(2):0;
-  if(song){
-    $('wInfo').textContent=songStatus();
-    if(song.endT!==null&&AC&&AC.currentTime>song.endT+1.5)$('wAgain').style.display='';
-  }
-  info.textContent='V3 · '+Math.round(1000/fms)+' FPS · RES '+simLong+' · SCREEN '+innerWidth+'×'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+' · '+BPM+' BPM · 4 BARS · LAYERS '+events.length+'/'+MAXV+' · C heal · M sound · K click · R mp4 · E jpg · 0-9 type';
   }catch(e){console.warn('frame error',e);}
 }
 requestAnimationFrame(frame);
-/* WALL: build the sound engine shortly after load instead of on the first touch, so the first touch doesn't freeze */
+/* build the sound engine shortly after load instead of on the first touch, so the first touch doesn't freeze */
 setTimeout(()=>{try{initAudio();}catch(_){}},1200);
 /* offline: once this page has loaded with internet a single time, it keeps working with none */
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(()=>{});}
