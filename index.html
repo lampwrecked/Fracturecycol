@@ -8,7 +8,8 @@
 <meta name="theme-color" content="#000000">
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#c{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:none}
+#c,#o{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:none}
+#o{pointer-events:none}
 /* nothing is ever written on screen. the readout + tuning buttons only appear after 5 quick taps in the bottom-left corner (or ?debug=1) */
 #dbg{position:fixed;left:12px;top:10px;font:max(14px,1.7vmin)/1.35 ui-monospace,Menlo,Consolas,monospace;color:#9f9;background:rgba(0,0,0,.7);padding:6px 9px;pointer-events:none;display:none;white-space:pre}
 #pan{position:fixed;left:20vmin;bottom:12px;display:none;flex-wrap:wrap;gap:8px;max-width:calc(96vw - 20vmin)}
@@ -18,6 +19,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
 </head>
 <body>
 <canvas id="c"></canvas>
+<canvas id="o"></canvas>
 <div id="dbg"></div>
 <div id="pan"><button id="pResD">RES −</button><button id="pResU">RES +</button><button id="pLayD">LAYERS −</button><button id="pLayU">LAYERS +</button><button id="pTrD">TRAILS −</button><button id="pTrU">TRAILS +</button><button id="pFx">FX</button><button id="pMeter">METER</button><button id="pAud">AUDIO</button><button id="pSnd">SOUND TEST</button><button id="pClr">CLEAR</button><button id="pHide">HIDE</button></div>
 <script>
@@ -34,7 +36,7 @@ body.tune #dbg{display:block}body.tune #pan{display:flex}
      ?layers=12  looping layers kept (1-24)
      ?hands=8    fingers that can hold at once
      ?idle=0     seconds with no touch before the piece dissolves back to black (0 = never: it keeps looping and growing)
-     ?ghost=20   seconds between silent ghost cracks while resting (0 = off)
+     ?ghost=0    seconds between silent ghost cracks while nobody has touched yet (0 = off, the default: plain black)
      ?trails=4   how long light lingers before fading to black (1 = like the live piece on a fast phone, 8 = twice as long as 4)
      ?res=1920   canvas detail on the long edge (steps down by itself if too slow, and remembers)
      ?fs=0       don't go fullscreen on first touch
@@ -50,10 +52,10 @@ const qn=(k,d,lo,hi)=>{const v=parseFloat(QP.get(k));return isFinite(v)?Math.min
 const LS=(k,d)=>{try{const v=localStorage.getItem('fracture-board-'+k);return v===null?d:+v;}catch(_){return d;}},LSset=(k,v)=>{try{localStorage.setItem('fracture-board-'+k,v);}catch(_){}};
 let MAXV=Math.round(qn('layers',LS('layers',12),1,24)),METER=QP.has('meter')?QP.get('meter')!=='0':LS('meter',1)===1,FX=Math.round(qn('fx',LS('fx',2),0,2)),manualRes=LS('manual3',0)===1,AMODE=Math.round(qn('audio',LS('audio',1),0,3)),aEl=null,devErr=0;
 let TRAILS=qn('trails',LS('trails',4),.5,40);
-const HANDS=qn('hands',8,1,40),IDLE=qn('idle',0,0,360000),GHOST=qn('ghost',20,0,3600);
+const HANDS=qn('hands',8,1,40),IDLE=qn('idle',0,0,360000),GHOST=qn('ghost',0,0,3600);
 const FS=QP.get('fs')!=='0',DEBUG=QP.get('debug')==='1',FAST=QP.get('fast')==='1';
 const $=id=>document.getElementById(id);
-const cv=$('c'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
+const cv=$('c'),ov=$('o'),og=ov.getContext('2d'),dbg=$('dbg');let tune=DEBUG;if(tune)document.body.classList.add('tune');
 const g=cv.getContext('2d',FAST?{alpha:false,desynchronized:true,willReadFrequently:false}:{alpha:false,willReadFrequently:false});
 const RES_KEY='fracture-board-res3';
 let simLong=(()=>{
@@ -77,7 +79,7 @@ function calcSim(){
   else{simH=simLong;simW=Math.max(2,Math.round(simLong*iw/ih));}
 }
 calcSim();
-cv.width=simW;cv.height=simH;
+cv.width=simW;cv.height=simH;ov.width=simW;ov.height=simH;
 g.fillStyle='#000';g.fillRect(0,0,simW,simH);g.imageSmoothingEnabled=false;
 /* every effect that moves pixels around reads from this frame-start snapshot. drawing a canvas onto ITSELF makes the
    browser copy the entire canvas on every single call (dozens per frame = the lag), a separate source canvas does not. */
@@ -90,7 +92,7 @@ syncSnap();
 function resize(){
   const old=document.createElement('canvas');old.width=cv.width;old.height=cv.height;
   old.getContext('2d').drawImage(cv,0,0);
-  calcSim();cv.width=simW;cv.height=simH;
+  calcSim();cv.width=simW;cv.height=simH;ov.width=simW;ov.height=simH;ovRedraw();
   g.fillStyle='#000';g.fillRect(0,0,simW,simH);g.imageSmoothingEnabled=false;
   g.drawImage(old,0,0,simW,simH);
   syncSnap();
@@ -248,6 +250,7 @@ function crossFX(f,n){
   g.globalCompositeOperation='source-over';
 }
 function reveal(f,upto,linesOnly){
+  const top=f.live&&!f.released;      /* the fracture under a finger is also drawn on the top canvas */
   g.globalCompositeOperation='lighter';g.lineCap='round';
   const S=f.geo.segs;
   while(f.si<S.length&&S[f.si][4]<=upto){
@@ -255,6 +258,7 @@ function reveal(f,upto,linesOnly){
     g.strokeStyle='hsla('+hh+','+(f.sat||100)+'%,58%,.26)';g.lineWidth=s[5]*3.4*K;
     g.beginPath();g.moveTo(s[0],s[1]);g.lineTo(s[2],s[3]);g.stroke();
     g.strokeStyle='hsla('+hh+','+(f.sat||100)+'%,78%,.85)';g.lineWidth=s[5]*K;g.stroke();
+    if(top)ovSeg(s,hh,f.sat||100);
   }
   const C=f.geo.cells;
   while(f.ci<C.length&&C[f.ci].d<=upto){
@@ -1037,12 +1041,32 @@ function fadeGovern(){
   g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='rgba(0,0,0,'+Math.min(.6,a).toFixed(4)+')';g.fillRect(0,0,simW,simH);
 }
 
+/* ===== the fracture being held stays on top =====
+   everything else piles into one picture, where other layers' glitches shove and smear whatever is under them.
+   the cracks of a fracture that is under a finger are also drawn, clean, on a see-through canvas above that picture,
+   so the newest one is always readable. when the finger lifts, the clean copy fades away over a couple of seconds
+   and the fracture carries on in the picture like every other layer. */
+function ovSeg(s,hh,sat){
+  og.globalCompositeOperation='lighter';og.lineCap='round';
+  og.strokeStyle='hsla('+hh+','+sat+'%,60%,.3)';og.lineWidth=s[5]*3.6*K;
+  og.beginPath();og.moveTo(s[0],s[1]);og.lineTo(s[2],s[3]);og.stroke();
+  og.strokeStyle='hsla('+hh+','+sat+'%,82%,.95)';og.lineWidth=s[5]*1.25*K;og.stroke();
+}
+let ovFadeT=0;
+function ovClear(){og.clearRect(0,0,simW,simH);ov.style.opacity=1;ovFadeT=0;}
+function ovRedraw(){
+  ovClear();
+  held.forEach(f=>{const S=f.geo.segs,n=Math.min(f.si,S.length);for(let i=0;i<n;i++){const s=S[i];ovSeg(s,(((f.hue+s[6]*.22)%360)+360)%360,f.sat||100);}});
+}
+function afterRelease(){if(held.size)ovRedraw();else ovFadeT=performance.now()/1000;}
+
 /* ===== input: the picture comes first ===== */
 let pressMs=0,buildMs=0;
 function begin(e){
   if(held.size>=HANDS)return;             /* a crowd (or a sleeve on the touch frame) can't pile up endless voices */
   const t0=performance.now();
   resting=false;
+  if(!held.size)ovClear();
   const x=clamp(e.clientX/innerWidth*simW,0,simW-1),y=clamp(e.clientY/innerHeight*simH,0,simH-1);
   let t=0;
   if(AC){
@@ -1066,7 +1090,7 @@ function begin(e){
     }catch(err){console.warn(err);}
   },0);
 }
-function end(e){poke();const fr=held.get(e.pointerId);if(fr){held.delete(e.pointerId);fr.release();}}
+function end(e){poke();const fr=held.get(e.pointerId);if(fr){held.delete(e.pointerId);fr.release();afterRelease();}}
 let cTaps=[];
 function cornerTap(e){
   const z=Math.min(innerWidth,innerHeight)*.16;if(e.clientX>z||e.clientY<innerHeight-z)return;
@@ -1095,7 +1119,7 @@ document.addEventListener('visibilitychange',keepAwake);
 let lastTouch=performance.now()/1000,lastDrop=0,lastActive=0,resting=true,nextGhost=lastTouch+6;
 function poke(){lastTouch=performance.now()/1000;}
 function rest(now){
-  resting=true;loopT0=null;vq.length=0;mvq.length=0;clearWorld();
+  resting=true;loopT0=null;vq.length=0;mvq.length=0;clearWorld();ovClear();
   g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,simW,simH);
   nextGhost=now+4+rnd()*6;
 }
@@ -1108,7 +1132,7 @@ function ghost(now){
 }
 function idleTick(now){
   /* something leaning on the screen (a bag, a sleeve): let go of any touch held longer than 20 s */
-  if(held.size)held.forEach((fr,id)=>{if(now-fr.t0>20){held.delete(id);fr.release();}});
+  if(held.size)held.forEach((fr,id)=>{if(now-fr.t0>20){held.delete(id);fr.release();afterRelease();}});
   if(held.size||events.length||(frs.length&&!resting))lastActive=now;
   if(held.size)return;
   const idle=now-lastTouch;
@@ -1224,6 +1248,8 @@ function frame(){
   budget=fms>62?1:fms>45?2:3;                     /* thresholds sit below 30 fps: this board's browser tops out there */
   rbudget=fms>66?2:fms>50?4:fms>40?7:10;
   if(FX<2){budget=FX?Math.min(budget,1):0;rbudget=FX?Math.min(rbudget,3):0;}
+  if(held.size)rbudget=Math.min(rbudget,2);      /* while someone is holding, the other layers keep their cracks but calm their effects */
+  if(ovFadeT){const k=(now-ovFadeT)/2.5;if(k>=1)ovClear();else ov.style.opacity=(1-k).toFixed(2);}
   qualityCheck(now);
   idleTick(now);
   if(now-worldSweep>5&&!held.size&&world.length){sweepWorld(now);}
@@ -1248,7 +1274,7 @@ function frame(){
   if(tune){
     jsMs=jsMs*.9+(performance.now()-j0)*.1;
     if(++dbgN%6===0){
-      dbg.textContent='B8  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
+      dbg.textContent='B9  '+Math.round(1000/fms)+' fps  worst '+Math.round(worst)+'ms  js '+jsMs.toFixed(1)+'ms  press '+pressMs.toFixed(0)+'ms  build '+buildMs.toFixed(0)+'ms'
         +'\nres '+simLong+(manualRes?' (set)':' (auto)')+'  layers '+events.length+'/'+MAXV+'  trails '+TRAILS+'  fx '+FX+'  meter '+(METER?'on':'off')+'  lum '+lumAvg.toFixed(0)
         +'\naudio '+(AC?AC.state+' '+AC.sampleRate+'Hz':audioDead?'FAILED':'none')+'  '+['fast','safe','element','OFF'][AMODE]+' '+Math.round(1000*((AC&&(AC.outputLatency||AC.baseLatency))||0))+'ms  out '+outPk.toFixed(2)+(soundOn?'':'  MUTED')+'  fixes '+softFix+'/'+hardFix+(fixWhy?' '+fixWhy:'')+(devErr?'  DEVICE ERRORS '+devErr:'')
         +'\nscreen '+innerWidth+'x'+innerHeight+' @'+(+devicePixelRatio.toFixed(2))+'  '+UA;

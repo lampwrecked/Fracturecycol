@@ -19,7 +19,9 @@ Address: `https://lampwrecked.github.io/Fracturecycol/`
   touch is near an edge) and everything fans forward from the touch; nothing grows backwards.
 - **Touch first.** A touch draws its first stretch of crack inside the touch event, before any sound is set up.
 - Up to 8 fingers can hold at once. Once there are layers, the loop keeps playing and growing with nobody there.
-  Before the first touch (and after a clear), a silent ghost crack appears about every 20 s.
+  Before the first touch (and after a clear) the screen is plain black.
+- **The fracture under a finger stays on top.** Its cracks are also drawn clean on a layer above the picture, and the
+  other layers calm their effects while someone is holding. The clean copy fades over 2.5 s after the finger lifts.
 - Goes fullscreen on the first touch, keeps the screen awake, and works offline after one visit with internet.
 
 A plugged-in keyboard: **C** clears everything, **M** mutes.
@@ -40,7 +42,7 @@ Tap the **bottom-left corner 5 times quickly**. A green readout (speed, detail, 
 | `?layers=12` | looping layers kept (1–24) | 12 |
 | `?hands=8` | fingers that can hold at once | 8 |
 | `?idle=120` | seconds of no touch before it dissolves back to black (0 = never) | 0 |
-| `?ghost=20` | seconds between resting ghosts (0 = off) | 20 |
+| `?ghost=20` | seconds between silent ghost cracks before the first touch (0 = off) | 0 |
 | `?trails=4` | how long light lingers before fading to black (bigger = longer) | 4 |
 | `?res=1920` | picture detail; also resets the remembered value | 1920, steps down by itself if too slow |
 | `?meter=0` | turn off the brightness meter (try if it stutters about 3 times a second) | on |
